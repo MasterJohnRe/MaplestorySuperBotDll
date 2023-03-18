@@ -1,0 +1,14 @@
+﻿  mapleSuperBotDll.cpp
+E:\visualStudioProjects\mapleSuperBotDll\mapleSuperBotDll\mapleSuperBotDll.h(42,20): warning C4251: 'CmapleSuperBotDll::monstersPositionsRemovedOpcodes': class 'std::vector<BYTE,std::allocator<BYTE>>' needs to have dll-interface to be used by clients of class 'CmapleSuperBotDll'
+E:\visualStudioProjects\mapleSuperBotDll\mapleSuperBotDll\mapleSuperBotDll.h(42,7): message : see declaration of 'std::vector<BYTE,std::allocator<BYTE>>'
+E:\visualStudioProjects\mapleSuperBotDll\mapleSuperBotDll\mapleSuperBotDll.h(43,31): warning C4251: 'CmapleSuperBotDll::monstersPositionsAddressesVector': class 'std::vector<Point<DWORD,2>,std::allocator<Point<DWORD,2>>>' needs to have dll-interface to be used by clients of class 'CmapleSuperBotDll'
+E:\visualStudioProjects\mapleSuperBotDll\mapleSuperBotDll\mapleSuperBotDll.h(30,7): message : see declaration of 'std::vector<Point<DWORD,2>,std::allocator<Point<DWORD,2>>>'
+E:\visualStudioProjects\mapleSuperBotDll\mapleSuperBotDll\mapleSuperBotDll.h(44,19): warning C4251: 'CmapleSuperBotDll::squaresMonsterCounterVector': class 'std::vector<int,std::allocator<int>>' needs to have dll-interface to be used by clients of class 'CmapleSuperBotDll'
+E:\visualStudioProjects\mapleSuperBotDll\mapleSuperBotDll\mapleSuperBotDll.h(44,7): message : see declaration of 'std::vector<int,std::allocator<int>>'
+E:\visualStudioProjects\mapleSuperBotDll\mapleSuperBotDll\mapleSuperBotDll.h(45,42): warning C4251: 'CmapleSuperBotDll::monstersSquares': class 'std::vector<std::vector<Point<int,2>,std::allocator<Point<int,2>>>,std::allocator<std::vector<Point<int,2>,std::allocator<Point<int,2>>>>>' needs to have dll-interface to be used by clients of class 'CmapleSuperBotDll'
+E:\visualStudioProjects\mapleSuperBotDll\mapleSuperBotDll\mapleSuperBotDll.h(45,7): message : see declaration of 'std::vector<std::vector<Point<int,2>,std::allocator<Point<int,2>>>,std::allocator<std::vector<Point<int,2>,std::allocator<Point<int,2>>>>>'
+E:\visualStudioProjects\mapleSuperBotDll\mapleSuperBotDll\mapleSuperBotDll.cpp(83,20): error C2600: 'CmapleSuperBotDll::CmapleSuperBotDll': cannot define a compiler-generated special member function (must be declared in the class first)
+E:\visualStudioProjects\mapleSuperBotDll\mapleSuperBotDll\mapleSuperBotDll.cpp(111,29): warning C4018: '<': signed/unsigned mismatch
+  MemoryAccess.cpp
+E:\visualStudioProjects\mapleSuperBotDll\mapleSuperBotDll\MemoryAccess.cpp(41,1): fatal  error C1010: unexpected end of file while looking for precompiled header. Did you forget to add '#include "pch.h"' to your source?
+  Generating Code...

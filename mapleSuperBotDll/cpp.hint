@@ -1,0 +1,2 @@
+#define MAPLESUPERBOTDLL_API __declspec(dllexport)
+#define MAPLESUPERBOTDLL_API __declspec(dllimport)
