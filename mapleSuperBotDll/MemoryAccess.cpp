@@ -1,6 +1,5 @@
 
-#ifndef MemoryAccess_HEADER
-#define MemoryAccess_HEADER
+#include "pch.h"
 #include "MemoryAccess.h"
 
 
@@ -36,5 +35,3 @@ uintptr_t MemoryAccess::GetModuleBaseAddress(DWORD procId, const wchar_t* modNam
 }
 
 
-
-#endif
