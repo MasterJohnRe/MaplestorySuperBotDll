@@ -60,7 +60,8 @@ void  __declspec(naked) myTrampoline()
 
 MAPLESUPERBOTDLL_API DWORD runBot()
 {
-	while (true) {
+	/*while (true) {*/
+		
 		if (superBot.isMonstersPositionsAddressesVectorFull())
 		{
 			if (superBot.getIsHookOn()) {
@@ -73,11 +74,13 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			if (!superBot.getIsHookOn())
 			{
 
+				MessageBoxA(NULL, "HELLO", "A", NULL);
 				restoreJumpHook = superBot.enableHook(HOOK_AT_FUNCTION_ADDRESS, (DWORD)&myTrampoline, 7);
 				//superBot.setRestoreJumpHook(restoreJumpHook);
 				superBot.setIsHookOn(true);
 			}
 
 		}
-	}
+		return 0;
+	//}
 }

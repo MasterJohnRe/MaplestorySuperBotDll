@@ -19,7 +19,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         MessageBoxA(NULL, "HELLO", "A", NULL);
 
         
-        CloseHandle(thread);
+        //CloseHandle(thread);
     }
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
