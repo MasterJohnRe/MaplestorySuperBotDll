@@ -64,6 +64,8 @@ unsigned int getNumberOfMonsters(HANDLE process, unsigned int dynamicPtrBaseAddr
 
 
 
+
+
 MapleSuperBot::MapleSuperBot() {
 	this->memoryManipulation = MemoryAccess();
 	//this->monstersPositionsRemovedOpcodes = { 0x0F, 0xBF , 0x47, 0x04, 0x3B,0x46,0x34 };
@@ -80,6 +82,51 @@ MapleSuperBot::MapleSuperBot() {
 	this->numberOfMonsters = getNumberOfMonsters(this->process, this->dynamicPtrBaseAddr);
 }
 
+void MapleSuperBot::initializeSquares() {
+	//clear monsterSquares and squaresMonsterCounter Array
+	for (int i = 0; i < this->monstersPositionsAddressesVector.size(); i++) {
+		//define Square
+		DWORD monsterXAddress = this->monstersPositionsAddressesVector[i][X];
+		signed int monsterX = -1;
+		DWORD issucceddedX = ReadProcessMemory(process, (BYTE*)monsterXAddress, &monsterX, sizeof(signed int), 0);
+		DWORD monsterYAddress = this->monstersPositionsAddressesVector[i][Y];
+		signed int monsterY = -1;
+		DWORD issucceddedY = ReadProcessMemory(process, (BYTE*)monsterYAddress, &monsterY, sizeof(signed int), 0);
+		if (issucceddedX && issucceddedY) {
+			int maxX = monsterX + 300;
+			int minX = monsterX - 300;
+			int maxY = monsterY + 100;
+			int minY = monsterY - 100;
+
+			std::vector<Point<DWORD, 2>> tmpVector;
+			this->monstersSquares.push_back(tmpVector);
+			this->squaresMonsterCounterVector.push_back(0);
+			for (int j = 0; j < this->monstersPositionsAddressesVector.size(); j++) {
+				//check if monster inside square
+				//if so enter it to square array
+				DWORD monsterXAddress = this->monstersPositionsAddressesVector[j][X];
+				signed int monsterX = -1;
+				DWORD issucceddedX = ReadProcessMemory(process, (BYTE*)monsterXAddress, &monsterX, sizeof(signed int), 0);
+				DWORD monsterYAddress = this->monstersPositionsAddressesVector[j][Y];
+				signed int monsterY = -1;
+				DWORD issucceddedY = ReadProcessMemory(process, (BYTE*)monsterYAddress, &monsterY, sizeof(signed int), 0);
+				if (issucceddedX && issucceddedY) {
+					if (monsterX >= minX && monsterX <= maxX &&
+						monsterY >= minY && monsterY <= maxY) {
+						this->monstersSquares[i].push_back(this->monstersPositionsAddressesVector[j]);
+						this->squaresMonsterCounterVector[i] += 1;
+					}
+				}
+			}
+		}
+	}
+}
+
+
+
+void MapleSuperBot::executeAttack() {
+	initializeSquares();
+}
 
 DWORD MapleSuperBot::enableHook(DWORD hookAt, DWORD newFunc, int size)
 {
@@ -179,6 +226,25 @@ void MapleSuperBot::printMonstersPositions() {
 		logger.log(LOG_FILE_PATH2, "monster " + std::to_string(i) + ":");
 		logger.log(LOG_FILE_PATH2, "X coordinate value: " + std::to_string(monsterX));
 		logger.log(LOG_FILE_PATH2, "Y coordinate value: " + std::to_string(monsterY));
+	}
+}
+
+void MapleSuperBot::printMonstersSquares() {
+	logger.log(LOG_FILE_PATH2, "");
+	logger.log(LOG_FILE_PATH2, "Monsters Squares:");
+	for (unsigned int i = 0; i < this->monstersSquares.size(); i++) {
+		logger.log(LOG_FILE_PATH2, "Square: " + std::to_string(i));
+		for (unsigned int j = 0; j < this->monstersSquares[i].size(); j++) {
+			DWORD monsterXAddress = this->monstersSquares[i][j][X];
+			signed int monsterX = -1;
+			DWORD issuccedded = ReadProcessMemory(process, (BYTE*)monsterXAddress, &monsterX, sizeof(signed int), 0);
+			DWORD monsterYAddress = this->monstersSquares[i][j][Y];
+			signed int monsterY = -1;
+			issuccedded = ReadProcessMemory(process, (BYTE*)monsterYAddress, &monsterY, sizeof(signed int), 0);
+			logger.log(LOG_FILE_PATH2, "monster " + std::to_string(j) + ":");
+			logger.log(LOG_FILE_PATH2, "X coordinate value: " + std::to_string(monsterX));
+			logger.log(LOG_FILE_PATH2, "Y coordinate value: " + std::to_string(monsterY));
+		}
 	}
 }
 

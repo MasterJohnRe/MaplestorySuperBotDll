@@ -89,14 +89,16 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 	while (true) {
 		if (superBot.isMonstersPositionsAddressesVectorFull())
 		{
-			logger.log(LOG_FILE_PATH, "isMonstersPositionsAddressesVector is Full");
+			//logger.log(LOG_FILE_PATH, "isMonstersPositionsAddressesVector is Full");
 			if (superBot.getIsHookOn()) {
 				superBot.disableHook(HOOK_AT_FUNCTION_ADDRESS);
 				superBot.setIsHookOn(false);
 				logger.log(LOG_FILE_PATH, "set isHookOn to False");
 			}
-			superBot.printMonstersPositions();
-			//EXECUTE THE BOT
+			//superBot.printMonstersPositions();
+			//execute attack
+			superBot.initializeSquares();
+			break;
 			//maybe set timeout to like 0.5 so that the positions adress vector gets full again.
 		}
 		else {
@@ -105,7 +107,6 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 
 				//MessageBoxA(NULL, "HELLO", "A", NULL);
 				restoreJumpHook = superBot.enableHook(HOOK_AT_FUNCTION_ADDRESS, (DWORD)&myTrampoline, 7);
-				//superBot.setRestoreJumpHook(restoreJumpHook);
 				superBot.setIsHookOn(true);
 				logger.log(LOG_FILE_PATH, "set isHookOn to true");
 			}
