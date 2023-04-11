@@ -25,9 +25,8 @@ public:
 	void start();
 	void addToMonstersPositionsAddressesVector(Point<DWORD, 2> newMonsterPosition);
 	void initializeSquares();
-	void executeAttack();
+	int executeAttack();
 	int getnumberOfMonsters();
-	
 	
 	//void setRestoreJumpHook(DWORD restoreJumpHook);
 	
@@ -36,6 +35,7 @@ private:
 	DWORD PID;
 	MemoryAccess memoryManipulation;
 	DWORD dynamicPtrBaseAddr;
+	Point<DWORD, 2> playerPosition;
 	std::vector<BYTE> monstersPositionsRemovedOpcodes;
 	std::vector<Point<DWORD, 2>> monstersPositionsAddressesVector;
 	std::vector<int> squaresMonsterCounterVector;

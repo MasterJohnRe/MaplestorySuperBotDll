@@ -98,7 +98,8 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			//superBot.printMonstersPositions();
 			//execute attack
 			superBot.initializeSquares();
-			break;
+			superBot.printMonstersSquares();
+			superBot.executeAttack();
 			//maybe set timeout to like 0.5 so that the positions adress vector gets full again.
 		}
 		else {

@@ -5,13 +5,20 @@
 int nmapleSuperBotDll = 0;
 const int X = 0;
 const int Y = 1;
+const float PLAYER_SPEED = 123.8;
+const int ATTACK_WIDTH = 80;
+const int ATTACK_HEIGHT = 150;
 //const unsigned int RESTORE_JUMP_HOOK = 0x0068A6B7;
 const unsigned int MAPLESTORY_NUMBER_OF_MONSTERS_BASE_ADDRESS = 0x007EBFA4;
 const std::vector<unsigned int> MAPLESTORY_NUMBER_OF_MONSTERS_OFFSETS = { 0x10 };
-const LPCSTR MAPLESTORY_HANDLE_NAME = (LPCSTR)"Maplestory";
+const unsigned int PLAYER_OBJECT_BASE_ADDRESS = 0x00BEBF98;
+const std::vector<unsigned int> MAPLESTORY_PLAYER_POSITION_X_OFFSETS = {0x00 , 0x116C };
+const std::vector<unsigned int> MAPLESTORY_PLAYER_POSITION_Y_OFFSETS = {0x00, 0x1170 };
+const LPCSTR MAPLESTORY_HANDLE_NAME = (LPCSTR)"MapleStory";
 const wchar_t* MAPLESTORY_MOD_NAME = L"HeavenMS-localhost-WINDOW.exe";
 FileHandler logger;
 std::string LOG_FILE_PATH2 = "logs2/logs.txt";
+
 
 uintptr_t GetModuleBaseAddress(DWORD procId, const wchar_t* modName)
 {
@@ -62,8 +69,161 @@ unsigned int getNumberOfMonsters(HANDLE process, unsigned int dynamicPtrBaseAddr
 	return numberOfMonsters;
 }
 
+float getDistance(int x1, int y1, int x2, int y2) {
+	return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2) * 1.0);
+}
+
+bool isMonsterInRange(HANDLE process, Point<DWORD, 2> playerPositionAddresses, Point<DWORD, 2> monsterPositionAddresses, int attackWidth, int attackHeight) {
+	logger.log(LOG_FILE_PATH2, "got here111");
+	signed int playerX = 0;
+	signed int playerY = 0;
+	signed int monsterX = 0;
+	signed int monsterY = 0;
+	DWORD issuccedded = ReadProcessMemory(process, (BYTE*)(playerPositionAddresses[X]), &playerX, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(playerPositionAddresses[Y]), &playerY, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(monsterPositionAddresses[X]), &monsterX, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(monsterPositionAddresses[Y]), &monsterY, sizeof(DWORD), 0);
+	logger.log(LOG_FILE_PATH2, "monsterX: " + std::to_string(monsterX)  + ", playerX: " + std::to_string(playerX));
+	if (abs(monsterX - playerX) > attackWidth)
+		return false;
+	if (abs(monsterY - playerY) > attackHeight)
+		return false;
+	return true;
+}
+
+void sendKeyWithSendMessage(HWND windowa, WORD key, char letter, int time = 0) {
+	HWND window = FindWindowA(NULL, MAPLESTORY_HANDLE_NAME);
+	if (IsWindow(window)) {
+		LRESULT result = PostMessageA(window, WM_KEYDOWN, key, 0);
+		// Check if the function failed
+		if (result == 0)
+		{
+			// Call GetLastError to retrieve the error code
+			DWORD error = GetLastError();
+			logger.log(LOG_FILE_PATH2, "when sending message DOWN: " + std::to_string(error));
+		}
+
+		if (letter != 0)
+			PostMessageA(window, WM_CHAR, letter, 1);
+		result = PostMessageA(window, WM_KEYUP, key, 1);
+		if (result == 0)
+		{
+			// Call GetLastError to retrieve the error code
+			DWORD error = GetLastError();
+			logger.log(LOG_FILE_PATH2, "when sending message UP: " + std::to_string(error));
+		}
+	}
+	else {
+		DWORD error = GetLastError();
+		logger.log(LOG_FILE_PATH2, "couldn't get window in executeAttack for the error code: " + std::to_string(error));
+	}
+}
+
+void changeDirectionToMonster(HWND window, HANDLE process, Point<DWORD, 2> playerPositionAddresses, Point<DWORD, 2> monsterPositionAddresses) {
+	signed int playerX = 0;
+	signed int playerY = 0;
+	signed int monsterX = 0;
+	signed int monsterY = 0;
+	DWORD issuccedded = ReadProcessMemory(process, (BYTE*)(playerPositionAddresses[X]), &playerX, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(playerPositionAddresses[Y]), &playerY, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(monsterPositionAddresses[X]), &monsterY, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(monsterPositionAddresses[Y]), &monsterY, sizeof(DWORD), 0);
+	if ((playerX - monsterX) > 0) {
+		sendKeyWithSendMessage(window, VK_LEFT, 0);
+	}
+	else {
+		sendKeyWithSendMessage(window, VK_RIGHT, 0);
+	}
+}
+
+bool isMonsterExists(HWND window, HANDLE process, Point<DWORD, 2> monsterPositionAddresses) {
+	signed int monsterX = 0;
+	signed int monsterY = 0;
+	DWORD issuccedded = ReadProcessMemory(process, (BYTE*)(monsterPositionAddresses[X]), &monsterY, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(monsterPositionAddresses[Y]), &monsterY, sizeof(DWORD), 0);
+	if (monsterX <= -1000 || monsterX >= 2000)
+	{
+		return false;
+	}
+	return true;
+}
 
 
+void goToMonster(HWND window, HANDLE process , Point<DWORD, 2> playerPositionAddresses, Point<DWORD, 2> monsterPositionAddresses) {
+	signed int playerX = 0;
+	signed int playerY = 0;
+	signed int monsterX = 0;
+	signed int monsterY = 0;
+	DWORD issuccedded = ReadProcessMemory(process, (BYTE*)(playerPositionAddresses[X]), &playerX, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(playerPositionAddresses[Y]), &playerY, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(monsterPositionAddresses[X]), &monsterY, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(monsterPositionAddresses[Y]), &monsterY, sizeof(DWORD), 0);
+	int distance = abs(monsterX - playerX);
+	float timeToWalk = distance / PLAYER_SPEED;
+	logger.log(LOG_FILE_PATH2, "time to walk: " + std::to_string(timeToWalk));
+	if (monsterX - playerX > 0) {
+		sendKeyWithSendMessage(window, VK_RIGHT, 0,timeToWalk);
+		
+	}
+	else {
+		sendKeyWithSendMessage(window, VK_LEFT,0, timeToWalk);
+	}
+}
+
+void attackMonster(HWND window, HANDLE process) {
+	sendKeyWithSendMessage(window, 0x41, 0, 0);
+}
+
+Point<DWORD,2> getPlayerPosition(HANDLE process) {
+	Point<DWORD, 2> playerPosition;
+	playerPosition[X] = FindDMAAddy(process, PLAYER_OBJECT_BASE_ADDRESS, MAPLESTORY_PLAYER_POSITION_X_OFFSETS);
+	playerPosition[Y] = FindDMAAddy(process, PLAYER_OBJECT_BASE_ADDRESS, MAPLESTORY_PLAYER_POSITION_Y_OFFSETS);
+	signed int playerX = 0;
+	signed int playerY = 0;
+	DWORD issuccedded = ReadProcessMemory(process, (BYTE*)(playerPosition[X]), &playerX, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(playerPosition[Y]), &playerY, sizeof(DWORD), 0);
+	logger.log(LOG_FILE_PATH2,"player position X: " + std::to_string(playerX));
+	logger.log(LOG_FILE_PATH2,"player position Y: " + std::to_string(playerY));
+	return playerPosition;
+}
+
+int getBiggestSquareIndex(std::vector<int> squaresMonsterCounterVector) {
+	int biggestSquaresize = -1;
+	int biggestSquareIndex = -1;
+	for (int i = 0; i < squaresMonsterCounterVector.size(); i++) {
+		if (squaresMonsterCounterVector[i] > biggestSquaresize) {
+			biggestSquaresize = squaresMonsterCounterVector[i];
+			biggestSquareIndex = i;
+		}
+	}
+	return biggestSquareIndex;
+}
+
+
+int getClosestMonsterIndex(HANDLE process, Point<DWORD,2> playerPosition , std::vector<Point<DWORD, 2>> monsterSquare) {
+	//get player x,y
+	//go through monsters and get the lowest distance monster from player.
+	int lowestDistance = 10000;
+	int lowestDistanceMonsterIndex = -1;
+	signed int playerX = 0;
+	signed int playerY = 0;
+	DWORD issuccedded = ReadProcessMemory(process, (BYTE*)(playerPosition[X]), &playerX, sizeof(DWORD), 0);
+	issuccedded = ReadProcessMemory(process, (BYTE*)(playerPosition[Y]), &playerY, sizeof(DWORD), 0);
+
+	for (int i = 0; i < monsterSquare.size(); i++) {
+		signed int monsterX = 0;
+		signed int monsterY = 0;
+		issuccedded = ReadProcessMemory(process, (BYTE*)(monsterSquare[i][X]), &monsterX, sizeof(DWORD), 0);
+		issuccedded = ReadProcessMemory(process, (BYTE*)(monsterSquare[i][Y]), &monsterY, sizeof(DWORD), 0);
+		signed int distance = getDistance(monsterX, monsterY, playerX, playerY);
+		if (distance < lowestDistance) {
+			lowestDistance = distance;
+			lowestDistanceMonsterIndex = i;
+		}
+	}
+	//return it's index.
+	return lowestDistanceMonsterIndex;
+}
 
 
 MapleSuperBot::MapleSuperBot() {
@@ -79,8 +239,41 @@ MapleSuperBot::MapleSuperBot() {
 	);
 
 	this->dynamicPtrBaseAddr = GetModuleBaseAddress(PID, MAPLESTORY_MOD_NAME);
+	this->playerPosition = getPlayerPosition(this->process);
 	this->numberOfMonsters = getNumberOfMonsters(this->process, this->dynamicPtrBaseAddr);
 }
+
+
+int MapleSuperBot::executeAttack() {
+	int biggestSquareIndex = getBiggestSquareIndex(this->squaresMonsterCounterVector);
+	logger.log(LOG_FILE_PATH2, "biggest Square Index: " + std::to_string(biggestSquareIndex));
+	if (biggestSquareIndex == -1) {
+		logger.log(LOG_FILE_PATH2, "failed getting biggest square index");
+		return 0;
+	}
+	int closestMonsterIndex = getClosestMonsterIndex(this->process, this->playerPosition, this->monstersSquares[biggestSquareIndex]);
+	logger.log(LOG_FILE_PATH2, "closestMonsterIndex: " + std::to_string(closestMonsterIndex));
+	HWND window = FindWindowA(NULL, MAPLESTORY_HANDLE_NAME);
+	if (IsWindow(window)){
+		while (isMonsterExists(window, this->process, this->monstersSquares[biggestSquareIndex][closestMonsterIndex])) {
+			logger.log(LOG_FILE_PATH2, "monster exists");
+			if (isMonsterInRange(this->process, this->playerPosition, this->monstersSquares[biggestSquareIndex][closestMonsterIndex], ATTACK_WIDTH, ATTACK_HEIGHT))
+			{
+				changeDirectionToMonster(window, this->process, this->playerPosition, this->monstersSquares[biggestSquareIndex][closestMonsterIndex]);
+				attackMonster(window, this->process);
+			}
+			else {
+				logger.log(LOG_FILE_PATH2, "going to monster");
+				goToMonster(window, this->process, this->playerPosition, this->monstersSquares[biggestSquareIndex][closestMonsterIndex]);
+			}
+		}
+	}
+	else {
+		DWORD error = GetLastError();
+		logger.log(LOG_FILE_PATH2,"couldn't get window in executeAttack for the error code: " + std::to_string(error));
+	}
+}
+
 
 void MapleSuperBot::initializeSquares() {
 	//clear monsterSquares and squaresMonsterCounter Array
@@ -122,11 +315,6 @@ void MapleSuperBot::initializeSquares() {
 	}
 }
 
-
-
-void MapleSuperBot::executeAttack() {
-	initializeSquares();
-}
 
 DWORD MapleSuperBot::enableHook(DWORD hookAt, DWORD newFunc, int size)
 {
@@ -192,8 +380,10 @@ bool MapleSuperBot::isMonstersPositionsAddressesVectorFull() {
 		DWORD issuccedded = ReadProcessMemory(process, (BYTE*)monsterXAddress, &monsterX, sizeof(signed int), 0);
 		logger.log(LOG_FILE_PATH2, "monster X" + std::to_string(monsterX));
 		if (monsterX <= -1000 || monsterX >= 2000)
+		{
 			logger.log(LOG_FILE_PATH2,"monster X out of range: " + std::to_string(monsterX));
 			return false;
+		}
 	}*/
 	logger.log(LOG_FILE_PATH2, "returned true");
 	return true;
