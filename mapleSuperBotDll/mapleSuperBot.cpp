@@ -1,17 +1,17 @@
 #include "pch.h"
 #include "mapleSuperBot.h"
-
+#include "fileHandler.h"
 
 int nmapleSuperBotDll = 0;
 const int X = 0;
 const int Y = 1;
-const unsigned int RESTORE_JUMP_HOOK = 0x0068A6B7;
+//const unsigned int RESTORE_JUMP_HOOK = 0x0068A6B7;
 const unsigned int MAPLESTORY_NUMBER_OF_MONSTERS_BASE_ADDRESS = 0x007EBFA4;
 const std::vector<unsigned int> MAPLESTORY_NUMBER_OF_MONSTERS_OFFSETS = { 0x10 };
 const LPCSTR MAPLESTORY_HANDLE_NAME = (LPCSTR)"Maplestory";
 const wchar_t* MAPLESTORY_MOD_NAME = L"HeavenMS-localhost-WINDOW.exe";
-
-
+FileHandler logger;
+std::string LOG_FILE_PATH2 = "logs2/logs.txt";
 
 uintptr_t GetModuleBaseAddress(DWORD procId, const wchar_t* modName)
 {
@@ -66,7 +66,8 @@ unsigned int getNumberOfMonsters(HANDLE process, unsigned int dynamicPtrBaseAddr
 
 MapleSuperBot::MapleSuperBot() {
 	this->memoryManipulation = MemoryAccess();
-	this->monstersPositionsRemovedOpcodes = { 0x0F, 0xBF , 0x47, 0x04, 0x3B,0x46,0x34 };
+	//this->monstersPositionsRemovedOpcodes = { 0x0F, 0xBF , 0x47, 0x04, 0x3B,0x46,0x34 };
+	this->monstersPositionsRemovedOpcodes = { 0x90, 0x90 , 0x90 , 0x90, 0x90,0x90,0x90 };
 	//get Maplestory Window Process Id and store it in PID
 	this->PID = this->memoryManipulation.getGamePID(MAPLESTORY_HANDLE_NAME);
 	this->process = OpenProcess(
@@ -77,8 +78,6 @@ MapleSuperBot::MapleSuperBot() {
 
 	this->dynamicPtrBaseAddr = GetModuleBaseAddress(PID, MAPLESTORY_MOD_NAME);
 	this->numberOfMonsters = getNumberOfMonsters(this->process, this->dynamicPtrBaseAddr);
-
-
 }
 
 
@@ -93,11 +92,37 @@ DWORD MapleSuperBot::enableHook(DWORD hookAt, DWORD newFunc, int size)
 	memoryManipulation.writeMemory<BYTE>(this->process, hookAt, 0xE9);
 	//memoryManipulation.writeMemory<DWORD>(this->process, hookAt + 1, newOffset);
 	success = WriteProcessMemory(this->process, (LPVOID)(hookAt + 1 * sizeof(BYTE)), &newOffset, sizeof(DWORD), NULL);
+	if (success)
+		logger.log(LOG_FILE_PATH2, "enabled hook successfully");
 	for (unsigned int i = 5; i < size; i++)
 		memoryManipulation.writeMemory<BYTE>(this->process, hookAt + i, 0x90);
 	memoryManipulation.protectMemory<DWORD[3]>(this->process, hookAt + 1, oldProtection);
 	return hookAt + 5;
 }
+
+//optimized with breakpoint before - 0xCC:
+//DWORD MapleSuperBot::enableHook(DWORD hookAt, DWORD newFunc, int size)
+//{
+//	if (size > 12) // shouldn't ever have to replace 12+ bytes
+//		return 0;
+//	DWORD newOffset = newFunc - hookAt - 5;
+//	auto oldProtection = memoryManipulation.protectMemory<DWORD[3]>(this->process, hookAt + 1, PAGE_EXECUTE_READWRITE);
+//	BYTE Nop[] = { 0x90,0x90,0x90,0x90,0x90,0x90,0x90 };
+//	int success = WriteProcessMemory(this->process, (LPVOID*)(DWORD)hookAt, &Nop, sizeof(Nop), NULL);
+//	//Writing software reakpoint
+//	memoryManipulation.writeMemory<BYTE>(this->process, hookAt , 0xCC);
+//
+//	memoryManipulation.writeMemory<BYTE>(this->process, hookAt+1, 0xE9);
+//	success = WriteProcessMemory(this->process, (LPVOID)(hookAt + 2 * sizeof(BYTE)), &newOffset, sizeof(DWORD), NULL);
+//	if (success)
+//		logger.log(LOG_FILE_PATH2, "enabled hook successfully");
+//	for (unsigned int i = 6; i < size; i++)
+//		memoryManipulation.writeMemory<BYTE>(this->process, hookAt + i, 0x90);
+//	memoryManipulation.protectMemory<DWORD[3]>(this->process, hookAt + 1, oldProtection);
+//	return hookAt + 7;
+//}
+
+
 
 void MapleSuperBot::disableHook(DWORD hookAt)
 {
@@ -108,16 +133,22 @@ void MapleSuperBot::disableHook(DWORD hookAt)
 }
 
 bool MapleSuperBot::isMonstersPositionsAddressesVectorFull() {
-	if (this->monstersPositionsAddressesVector.size() != this->numberOfMonsters)
+	if (this->monstersPositionsAddressesVector.size() < this->numberOfMonsters)
+	{ 
+		logger.log(LOG_FILE_PATH2, "wtf" );
 		return false;
-	for (unsigned int i = 0; i < this->monstersPositionsAddressesVector.size(); i++)
+	}
+	/*for (unsigned int i = 0; i < this->monstersPositionsAddressesVector.size(); i++)
 	{
 		DWORD monsterXAddress = this->monstersPositionsAddressesVector[i][X];
-		DWORD monsterX = -1;
-		DWORD issuccedded = ReadProcessMemory(process, (BYTE*)monsterXAddress, &monsterX, sizeof(DWORD), 0);
+		signed int monsterX = -1;
+		DWORD issuccedded = ReadProcessMemory(process, (BYTE*)monsterXAddress, &monsterX, sizeof(signed int), 0);
+		logger.log(LOG_FILE_PATH2, "monster X" + std::to_string(monsterX));
 		if (monsterX <= -1000 || monsterX >= 2000)
+			logger.log(LOG_FILE_PATH2,"monster X out of range: " + std::to_string(monsterX));
 			return false;
-	}
+	}*/
+	logger.log(LOG_FILE_PATH2, "returned true");
 	return true;
 }
 
@@ -133,6 +164,30 @@ bool MapleSuperBot::isMonsterInAddressesVector(Point<DWORD, 2> newMonsterPositio
 
 std::vector<Point<DWORD, 2>> MapleSuperBot::getMonstersPositionsAddressesVector() {
 	return this->monstersPositionsAddressesVector;
+}
+
+void MapleSuperBot::printMonstersPositions() {
+	logger.log(LOG_FILE_PATH2, "");
+	logger.log(LOG_FILE_PATH2, "Monsters Positions:");
+	for (unsigned int i = 0; i < this->monstersPositionsAddressesVector.size(); i++) {
+		DWORD monsterXAddress = this->monstersPositionsAddressesVector[i][X];
+		signed int monsterX = -1;
+		DWORD issuccedded = ReadProcessMemory(process, (BYTE*)monsterXAddress, &monsterX, sizeof(signed int), 0);
+		DWORD monsterYAddress = this->monstersPositionsAddressesVector[i][Y];
+		signed int monsterY = -1;
+		issuccedded = ReadProcessMemory(process, (BYTE*)monsterYAddress, &monsterY, sizeof(signed int), 0);
+		logger.log(LOG_FILE_PATH2, "monster " + std::to_string(i) + ":");
+		logger.log(LOG_FILE_PATH2, "X coordinate value: " + std::to_string(monsterX));
+		logger.log(LOG_FILE_PATH2, "Y coordinate value: " + std::to_string(monsterY));
+	}
+}
+
+void MapleSuperBot::addToMonstersPositionsAddressesVector(Point<DWORD, 2> newMonsterPosition) {
+	this->monstersPositionsAddressesVector.push_back(newMonsterPosition);
+}
+
+int MapleSuperBot::getnumberOfMonsters() {
+	return this->numberOfMonsters;
 }
 
 int MapleSuperBot::getPositionCounter() {
