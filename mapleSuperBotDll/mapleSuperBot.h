@@ -17,22 +17,27 @@ public:
 	bool isMonsterInAddressesVector(Point<DWORD, 2> newMonsterPositionAddress);
 	bool getIsHookOn();
 	std::vector<Point<DWORD, 2>> getMonstersPositionsAddressesVector();
+	void printMonstersPositions();
 	int getPositionCounter();
 	void increasePositionCounter();
 	void setIsHookOn(bool isHookOn);
 	void start();
+	void addToMonstersPositionsAddressesVector(Point<DWORD, 2> newMonsterPosition);
+	int getnumberOfMonsters();
+	
+	
 	//void setRestoreJumpHook(DWORD restoreJumpHook);
-
+	
 private:
 	HANDLE process;
 	DWORD PID;
 	MemoryAccess memoryManipulation;
 	DWORD dynamicPtrBaseAddr;
-	unsigned int numberOfMonsters = 0;
 	std::vector<BYTE> monstersPositionsRemovedOpcodes;
 	std::vector<Point<DWORD, 2>> monstersPositionsAddressesVector;
 	std::vector<int> squaresMonsterCounterVector;
 	std::vector<std::vector<Point<int, 2>>> monstersSquares;
+	unsigned int numberOfMonsters = 0;
 	bool isHookOn = false;
 	int positionCounter = 0;
 };

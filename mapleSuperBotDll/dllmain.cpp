@@ -16,7 +16,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         //std::thread t1(runBot,);
         
         auto thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)runBot, NULL, 0, NULL);
-        MessageBoxA(NULL, "HELLO", "A", NULL);
+        //MessageBoxA(NULL, "HELLO", "A", NULL);
 
         
         //CloseHandle(thread);
