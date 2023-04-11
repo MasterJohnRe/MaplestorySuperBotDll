@@ -18,35 +18,10 @@
 #include "Point.h"
 
 
-// This class is exported from the dll
-class MAPLESUPERBOTDLL_API CmapleSuperBotDll {
-public:
-	CmapleSuperBotDll MapleSuperBot();
-	DWORD enableHook(DWORD hookAt, DWORD newFunc, int size);
-	void disableHook(DWORD hookAt);
-	bool isMonstersPositionsAddressesVectorFull();
-	bool isMonsterInAddressesVector(Point<DWORD, 2> newMonsterPositionAddress);
-	bool getIsHookOn();
-	std::vector<Point<DWORD, 2>> getMonstersPositionsAddressesVector();
-	int getPositionCounter();
-	void increasePositionCounter();
-	void setIsHookOn(bool isHookOn);
-	//void setRestoreJumpHook(DWORD restoreJumpHook);
+//extern MAPLESUPERBOTDLL_API int nmapleSuperBotDll;
 
-private:
-	HANDLE process;
-	DWORD PID;
-	MemoryAccess memoryManipulation;
-	DWORD dynamicPtrBaseAddr;
-	unsigned int numberOfMonsters = 0;
-	std::vector<BYTE> monstersPositionsRemovedOpcodes;
-	std::vector<Point<DWORD, 2>> monstersPositionsAddressesVector;
-	std::vector<int> squaresMonsterCounterVector;
-	std::vector<std::vector<Point<int, 2>>> monstersSquares;
-	bool isHookOn = false;
-	int positionCounter = 0;
-};
 
-extern MAPLESUPERBOTDLL_API int nmapleSuperBotDll;
 
-MAPLESUPERBOTDLL_API int fnmapleSuperBotDll(void);
+
+MAPLESUPERBOTDLL_API DWORD runBot();
+//MAPLESUPERBOTDLL_API DWORD runBot();
