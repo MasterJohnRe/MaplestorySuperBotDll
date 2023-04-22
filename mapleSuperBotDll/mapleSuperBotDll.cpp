@@ -89,6 +89,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 	while (true) {
 		if (superBot.isMonstersPositionsAddressesVectorFull())
 		{
+			logger.log(LOG_FILE_PATH, "isMonstersPositionsAddressesVector is full");
 			//logger.log(LOG_FILE_PATH, "isMonstersPositionsAddressesVector is Full");
 			if (superBot.getIsHookOn()) {
 				superBot.disableHook(HOOK_AT_FUNCTION_ADDRESS);
@@ -103,6 +104,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			//maybe set timeout to like 0.5 so that the positions adress vector gets full again.
 		}
 		else {
+			logger.log(LOG_FILE_PATH, "isMonstersPositionsAddressesVector is not full");
 			if (!superBot.getIsHookOn())
 			{
 
@@ -110,6 +112,8 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 				restoreJumpHook = superBot.enableHook(HOOK_AT_FUNCTION_ADDRESS, (DWORD)&myTrampoline, 7);
 				superBot.setIsHookOn(true);
 				logger.log(LOG_FILE_PATH, "set isHookOn to true");
+				//sleep for 1 second so that the hook will full it's monsters
+				Sleep(1000);
 			}
 
 		}

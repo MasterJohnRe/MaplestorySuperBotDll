@@ -27,7 +27,7 @@ public:
 	void initializeSquares();
 	int executeAttack();
 	int getnumberOfMonsters();
-	
+	void removeMonsterFromAddressesVector(DWORD xAddress);
 	//void setRestoreJumpHook(DWORD restoreJumpHook);
 	
 private:
