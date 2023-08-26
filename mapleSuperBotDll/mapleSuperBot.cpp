@@ -417,7 +417,7 @@ DWORD MapleSuperBot::enableHook(DWORD hookAt, DWORD newFunc, int size)
 	for (unsigned int i = 5; i < size; i++)
 		memoryManipulation.writeMemory<BYTE>(this->process, hookAt + i, 0x90);
 	memoryManipulation.protectMemory<DWORD[3]>(this->process, hookAt + 1, oldProtection);
-	return hookAt + 5;
+	return hookAt + 5; //check if 5 should be the number of nops
 }
 
 //optimized with breakpoint before - 0xCC:

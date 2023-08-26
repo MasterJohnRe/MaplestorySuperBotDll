@@ -20,13 +20,14 @@
 //}
 
 std::string LOG_FILE_PATH = "logs2/logs.txt";
-const unsigned int HOOK_AT_FUNCTION_ADDRESS = 0x0068A6B5;
 unsigned int const X_OFFSET = 0x30;
 unsigned int const Y_OFFSET = 0x34;
 const int X = 0;
 const int Y = 1;
 MapleSuperBot superBot;
 DWORD restoreJumpHook = 0;
+LPCSTR MONSTER_POSITION_ACCESS_FUNCTION_MODULE_NAME = "SHAPE2D.DLL";
+DWORD MONSTER_POSITION_ACCESS_FUNCTION_OFFSET_FROM_MODULE = 0x18514;
 
 void jumpHookCallback(DWORD EDI, DWORD ESI, DWORD EBP, DWORD ESP,
 	DWORD EBX, DWORD EDX, DWORD ECX, DWORD EAX) {
@@ -83,7 +84,12 @@ void __declspec(naked) myTrampoline()
 
 MAPLESUPERBOTDLL_API DWORD runBot()
 {
-	
+	DWORD hookAtFunctionModuleAddress = (DWORD)GetModuleHandleA(MONSTER_POSITION_ACCESS_FUNCTION_MODULE_NAME);
+	if (!hookAtFunctionModuleAddress) {
+		//GetLastError();
+		return 0;
+	}
+	DWORD hookAtFunctionAddress = hookAtFunctionModuleAddress + MONSTER_POSITION_ACCESS_FUNCTION_OFFSET_FROM_MODULE;
 	FileHandler logger;
 	logger.log(LOG_FILE_PATH, "started bot");
 	while (true) {
@@ -92,7 +98,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			logger.log(LOG_FILE_PATH, "isMonstersPositionsAddressesVector is full");
 			//logger.log(LOG_FILE_PATH, "isMonstersPositionsAddressesVector is Full");
 			if (superBot.getIsHookOn()) {
-				superBot.disableHook(HOOK_AT_FUNCTION_ADDRESS);
+				superBot.disableHook(hookAtFunctionAddress);
 				superBot.setIsHookOn(false);
 				logger.log(LOG_FILE_PATH, "set isHookOn to False");
 			}
@@ -109,7 +115,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			{
 
 				//MessageBoxA(NULL, "HELLO", "A", NULL);
-				restoreJumpHook = superBot.enableHook(HOOK_AT_FUNCTION_ADDRESS, (DWORD)&myTrampoline, 7);
+				restoreJumpHook = superBot.enableHook(hookAtFunctionAddress, (DWORD)&myTrampoline, 7);
 				superBot.setIsHookOn(true);
 				logger.log(LOG_FILE_PATH, "set isHookOn to true");
 				//sleep for 1 second so that the hook will full it's monsters
