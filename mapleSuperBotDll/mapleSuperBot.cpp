@@ -284,8 +284,8 @@ int getClosestMonsterIndex(HANDLE process, Point<DWORD,2> playerPosition , std::
 
 MapleSuperBot::MapleSuperBot() {
 	this->memoryManipulation = MemoryAccess();
-	//this->monstersPositionsRemovedOpcodes = { 0x0F, 0xBF , 0x47, 0x04, 0x3B,0x46,0x34 };
-	this->monstersPositionsRemovedOpcodes = { 0x90, 0x90 , 0x90 , 0x90, 0x90,0x90,0x90 };
+	this->monstersPositionsRemovedOpcodes = { 0x58, 0x24 , 0x44, 0x8B, 0x48};
+	//this->monstersPositionsRemovedOpcodes = { 0x90, 0x90 , 0x90 , 0x90, 0x90,0x90,0x90 };
 	//get Maplestory Window Process Id and store it in PID
 	this->PID = this->memoryManipulation.getGamePID(MAPLESTORY_HANDLE_NAME);
 	this->process = OpenProcess(
@@ -407,7 +407,7 @@ DWORD MapleSuperBot::enableHook(DWORD hookAt, DWORD newFunc, int size)
 		return 0;
 	DWORD newOffset = newFunc - hookAt - 5;
 	auto oldProtection = memoryManipulation.protectMemory<DWORD[3]>(this->process, hookAt + 1, PAGE_EXECUTE_READWRITE);
-	BYTE Nop[] = { 0x90,0x90,0x90,0x90,0x90,0x90,0x90 };
+	BYTE Nop[] = { 0x90,0x90,0x90,0x90,0x90};
 	int success = WriteProcessMemory(this->process, (LPVOID*)(DWORD)hookAt, &Nop, sizeof(Nop), NULL);
 	memoryManipulation.writeMemory<BYTE>(this->process, hookAt, 0xE9);
 	//memoryManipulation.writeMemory<DWORD>(this->process, hookAt + 1, newOffset);

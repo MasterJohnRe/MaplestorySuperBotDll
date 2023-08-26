@@ -6,7 +6,7 @@
 #include "mapleSuperBot.h"
 #include "mapleSuperBotDll.h"
 #include "fileHandler.h"
-
+#include <intrin.h>
 // This is an example of an exported variable
 
 //MAPLESUPERBOTDLL_API CmapleSuperBotDll superBot;
@@ -20,22 +20,23 @@
 //}
 
 std::string LOG_FILE_PATH = "logs2/logs.txt";
-unsigned int const X_OFFSET = 0x30;
-unsigned int const Y_OFFSET = 0x34;
+unsigned int const X_OFFSET = 0x88;
+unsigned int const Y_OFFSET = 0x92;
 const int X = 0;
 const int Y = 1;
 MapleSuperBot superBot;
 DWORD restoreJumpHook = 0;
 LPCSTR MONSTER_POSITION_ACCESS_FUNCTION_MODULE_NAME = "SHAPE2D.DLL";
-DWORD MONSTER_POSITION_ACCESS_FUNCTION_OFFSET_FROM_MODULE = 0x18514;
+DWORD MONSTER_POSITION_ACCESS_FUNCTION_OFFSET_FROM_MODULE = 0x1851B;//0x18514
 
-void jumpHookCallback(DWORD EDI, DWORD ESI, DWORD EBP, DWORD ESP,
-	DWORD EBX, DWORD EDX, DWORD ECX, DWORD EAX) {
+extern "C" void RunAssemblyCode(DWORD restoreJumpHook);
+
+void jumpHookCallback(CONTEXT context) {
 	FileHandler logger;
 	// get value of register that holds the monster x and y Position Addreses
 	Point<DWORD, 2> newMonsterPositionAddress;
-	newMonsterPositionAddress[X] = ESI + X_OFFSET;
-	newMonsterPositionAddress[Y] = ESI + Y_OFFSET;
+	newMonsterPositionAddress[X] = context.Rsi + X_OFFSET;
+	newMonsterPositionAddress[Y] = context.Rsi + Y_OFFSET;
 	if (!superBot.isMonsterInAddressesVector(newMonsterPositionAddress) && !superBot.isMonstersPositionsAddressesVectorFull())
 	{
 		superBot.addToMonstersPositionsAddressesVector(newMonsterPositionAddress);
@@ -54,32 +55,23 @@ void logFunction() {
 	logger.log(LOG_FILE_PATH, "myTrampoline executed");
 }
 
-void __declspec(naked) myTrampoline()
+void myTrampoline()
 {
-	__asm {
-		// Call logging function to indicate we've entered the trampoline
-		PUSHAD
-		CALL logFunction
-		POPAD
+	// Call logging function to indicate we've entered the trampoline
+	logFunction();
+	// Save registers
+	HANDLE hThread = GetCurrentThread();
+	CONTEXT context;
+	context.ContextFlags = CONTEXT_FULL;  // Specify the desired context flags
+	GetThreadContext(hThread, &context);
 
-		// Save flags and registers
-		PUSHFD
-		PUSHAD
+	// Call the hook callback function
+	jumpHookCallback(context);
 
-		// Call the hook callback function
-		CALL jumpHookCallback
+	// Restore registers
+	SetThreadContext(hThread, &context);
 
-		// Restore registers and flags
-		POPAD
-		POPFD
-
-		// Jump back to the original function
-		/*MOVSX EAX, WORD PTR[EDI + 0x04]
-		CMP EAX, [ESI + 0x34]*/
-		mov AX,[ESI+30]
-		mov ECX,EBX
-		JMP[restoreJumpHook]
-	}
+	RunAssemblyCode(restoreJumpHook);
 }
 
 MAPLESUPERBOTDLL_API DWORD runBot()
@@ -115,7 +107,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			{
 
 				//MessageBoxA(NULL, "HELLO", "A", NULL);
-				restoreJumpHook = superBot.enableHook(hookAtFunctionAddress, (DWORD)&myTrampoline, 7);
+				restoreJumpHook = superBot.enableHook(hookAtFunctionAddress, (DWORD)&myTrampoline, 5);
 				superBot.setIsHookOn(true);
 				logger.log(LOG_FILE_PATH, "set isHookOn to true");
 				//sleep for 1 second so that the hook will full it's monsters
