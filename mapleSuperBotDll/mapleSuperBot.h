@@ -11,8 +11,8 @@
 class MapleSuperBot {
 public:
 	MapleSuperBot();
-	DWORD enableHook(DWORD hookAt, DWORD newFunc, int size);
-	void disableHook(DWORD hookAt);
+	uintptr_t enableHook(uintptr_t hookAt, uintptr_t newFunc, int size);
+	void disableHook(uintptr_t hookAt);
 	bool isMonstersPositionsAddressesVectorFull();
 	bool isMonsterInAddressesVector(Point<DWORD, 2> newMonsterPositionAddress);
 	bool getIsHookOn();

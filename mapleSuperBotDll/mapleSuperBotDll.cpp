@@ -19,7 +19,7 @@
 //    return 0;
 //}
 
-std::string LOG_FILE_PATH = "logs2/logs.txt";
+std::string LOG_FILE_PATH = "C:/logs2/logs.txt";
 unsigned int const X_OFFSET = 0x88;
 unsigned int const Y_OFFSET = 0x92;
 const int X = 0;
@@ -76,14 +76,15 @@ void myTrampoline()
 
 MAPLESUPERBOTDLL_API DWORD runBot()
 {
-	DWORD hookAtFunctionModuleAddress = (DWORD)GetModuleHandleA(MONSTER_POSITION_ACCESS_FUNCTION_MODULE_NAME);
+	FileHandler logger;
+	uintptr_t hookAtFunctionModuleAddress = (uintptr_t)GetModuleHandleA(MONSTER_POSITION_ACCESS_FUNCTION_MODULE_NAME);
 	if (!hookAtFunctionModuleAddress) {
 		//GetLastError();
 		return 0;
 	}
-	DWORD hookAtFunctionAddress = hookAtFunctionModuleAddress + MONSTER_POSITION_ACCESS_FUNCTION_OFFSET_FROM_MODULE;
-	FileHandler logger;
+	uintptr_t hookAtFunctionAddress = hookAtFunctionModuleAddress + MONSTER_POSITION_ACCESS_FUNCTION_OFFSET_FROM_MODULE;
 	logger.log(LOG_FILE_PATH, "started bot");
+	//logger.log(LOG_FILE_PATH, "MonsterPositionFunction address: " + std::to_string(hookAtFunctionAddress));
 	while (true) {
 		if (superBot.isMonstersPositionsAddressesVectorFull())
 		{
@@ -96,9 +97,9 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			}
 			//superBot.printMonstersPositions();
 			//execute attack
-			superBot.initializeSquares();
+			//superBot.initializeSquares();
 			superBot.printMonstersSquares();
-			superBot.executeAttack();
+			//superBot.executeAttack();
 			//maybe set timeout to like 0.5 so that the positions adress vector gets full again.
 		}
 		else {
@@ -107,7 +108,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			{
 
 				//MessageBoxA(NULL, "HELLO", "A", NULL);
-				restoreJumpHook = superBot.enableHook(hookAtFunctionAddress, (DWORD)&myTrampoline, 5);
+				restoreJumpHook = superBot.enableHook(hookAtFunctionAddress, (uintptr_t)&myTrampoline, 12);
 				superBot.setIsHookOn(true);
 				logger.log(LOG_FILE_PATH, "set isHookOn to true");
 				//sleep for 1 second so that the hook will full it's monsters

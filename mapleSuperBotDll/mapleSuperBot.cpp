@@ -17,7 +17,7 @@ const std::vector<unsigned int> MAPLESTORY_PLAYER_POSITION_Y_OFFSETS = {0x00, 0x
 const LPCSTR MAPLESTORY_HANDLE_NAME = (LPCSTR)"MapleStory";
 const wchar_t* MAPLESTORY_MOD_NAME = L"HeavenMS-localhost-WINDOW.exe";
 FileHandler logger;
-std::string LOG_FILE_PATH2 = "logs2/logs.txt";
+std::string LOG_FILE_PATH2 = "C:/logs2/logs.txt";
 
 
 uintptr_t GetModuleBaseAddress(DWORD procId, const wchar_t* modName)
@@ -284,7 +284,7 @@ int getClosestMonsterIndex(HANDLE process, Point<DWORD,2> playerPosition , std::
 
 MapleSuperBot::MapleSuperBot() {
 	this->memoryManipulation = MemoryAccess();
-	this->monstersPositionsRemovedOpcodes = { 0x58, 0x24 , 0x44, 0x8B, 0x48};
+	this->monstersPositionsRemovedOpcodes = { 0x58, 0x24 , 0x44, 0x8B, 0x48, 0x00,0x00,0x00,0x90,0x86,0x89,0x48};
 	//this->monstersPositionsRemovedOpcodes = { 0x90, 0x90 , 0x90 , 0x90, 0x90,0x90,0x90 };
 	//get Maplestory Window Process Id and store it in PID
 	this->PID = this->memoryManipulation.getGamePID(MAPLESTORY_HANDLE_NAME);
@@ -401,23 +401,27 @@ void MapleSuperBot::initializeSquares() {
 }
 
 
-DWORD MapleSuperBot::enableHook(DWORD hookAt, DWORD newFunc, int size)
+uintptr_t MapleSuperBot::enableHook(uintptr_t hookAt, uintptr_t newFunc, int size)
 {
-	if (size > 12) // shouldn't ever have to replace 12+ bytes
+	if (size > 16) // shouldn't ever have to replace 12+ bytes
 		return 0;
-	DWORD newOffset = newFunc - hookAt - 5;
+	//uintptr_t newOffset = newFunc - hookAt - 9;
+	logger.log(LOG_FILE_PATH2, "Trampoline address: " + std::to_string(newFunc));
 	auto oldProtection = memoryManipulation.protectMemory<DWORD[3]>(this->process, hookAt + 1, PAGE_EXECUTE_READWRITE);
-	BYTE Nop[] = { 0x90,0x90,0x90,0x90,0x90};
-	int success = WriteProcessMemory(this->process, (LPVOID*)(DWORD)hookAt, &Nop, sizeof(Nop), NULL);
-	memoryManipulation.writeMemory<BYTE>(this->process, hookAt, 0xE9);
-	//memoryManipulation.writeMemory<DWORD>(this->process, hookAt + 1, newOffset);
-	success = WriteProcessMemory(this->process, (LPVOID)(hookAt + 1 * sizeof(BYTE)), &newOffset, sizeof(DWORD), NULL);
+	BYTE Nop[] = { 0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90 };
+	int success = WriteProcessMemory(this->process, (LPVOID*)(uintptr_t)hookAt, &Nop, sizeof(Nop), NULL);
+
+	BYTE movToRDI[] = { 0x48,0xBF};
+	BYTE JmpRDI[] = { 0xFF, 0xE7 };
+	success = WriteProcessMemory(this->process, (LPVOID*)((uintptr_t)hookAt), &movToRDI, sizeof(movToRDI), NULL);
+	success = WriteProcessMemory(this->process, (LPVOID*)((uintptr_t)hookAt + 2), &newFunc, sizeof(uintptr_t), NULL);
+	success = WriteProcessMemory(this->process, (LPVOID*)((uintptr_t)hookAt + 10), &JmpRDI, sizeof(JmpRDI), NULL);
 	if (success)
 		logger.log(LOG_FILE_PATH2, "enabled hook successfully");
-	for (unsigned int i = 5; i < size; i++)
+	for (unsigned int i = 12; i < size; i++)
 		memoryManipulation.writeMemory<BYTE>(this->process, hookAt + i, 0x90);
 	memoryManipulation.protectMemory<DWORD[3]>(this->process, hookAt + 1, oldProtection);
-	return hookAt + 5; //check if 5 should be the number of nops
+	return hookAt + 11; //check if 5 should be the number of nops
 }
 
 //optimized with breakpoint before - 0xCC:
@@ -444,7 +448,7 @@ DWORD MapleSuperBot::enableHook(DWORD hookAt, DWORD newFunc, int size)
 
 
 
-void MapleSuperBot::disableHook(DWORD hookAt)
+void MapleSuperBot::disableHook(uintptr_t hookAt)
 {
 	auto oldProtection = memoryManipulation.protectMemory<DWORD[3]>(this->process, hookAt + 1, PAGE_EXECUTE_READWRITE);
 	for (unsigned int i = 0; i < this->monstersPositionsRemovedOpcodes.size(); i++)
