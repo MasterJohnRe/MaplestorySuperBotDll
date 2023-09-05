@@ -66,7 +66,8 @@ unsigned int getNumberOfMonsters(HANDLE process, unsigned int dynamicPtrBaseAddr
 	DWORD issuccedded = ReadProcessMemory(process, (BYTE*)(dynamicPtrNumberOfMonstersBaseAddr), &numberOfMonstersAddr, sizeof(DWORD), 0);
 	numberOfMonstersAddr = FindDMAAddy(process, numberOfMonstersAddr, MAPLESTORY_NUMBER_OF_MONSTERS_OFFSETS);
 	issuccedded = ReadProcessMemory(process, (BYTE*)(numberOfMonstersAddr), &numberOfMonsters, sizeof(DWORD), 0);
-	return numberOfMonsters;
+	//return numberOfMonsters; //TODO: change back to number of monsters
+	return 10;
 }
 
 float getDistance(int x1, int y1, int x2, int y2) {
@@ -421,7 +422,7 @@ uintptr_t MapleSuperBot::enableHook(uintptr_t hookAt, uintptr_t newFunc, int siz
 	for (unsigned int i = 12; i < size; i++)
 		memoryManipulation.writeMemory<BYTE>(this->process, hookAt + i, 0x90);
 	memoryManipulation.protectMemory<DWORD[3]>(this->process, hookAt + 1, oldProtection);
-	return hookAt + 11; //check if 5 should be the number of nops
+	return hookAt + 12; //check if 5 should be the number of nops
 }
 
 //optimized with breakpoint before - 0xCC:

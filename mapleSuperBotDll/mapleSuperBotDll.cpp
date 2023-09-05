@@ -25,11 +25,12 @@ unsigned int const Y_OFFSET = 0x92;
 const int X = 0;
 const int Y = 1;
 MapleSuperBot superBot;
-DWORD restoreJumpHook = 0;
+uintptr_t restoreJumpHook = 0;
+uintptr_t hookAtFunctionAddress;
 LPCSTR MONSTER_POSITION_ACCESS_FUNCTION_MODULE_NAME = "SHAPE2D.DLL";
 DWORD MONSTER_POSITION_ACCESS_FUNCTION_OFFSET_FROM_MODULE = 0x1851B;//0x18514
 
-extern "C" void RunAssemblyCode(DWORD restoreJumpHook);
+extern "C" void RunAssemblyCode(uintptr_t restoreJumpHook);
 
 void jumpHookCallback(CONTEXT context) {
 	FileHandler logger;
@@ -57,21 +58,26 @@ void logFunction() {
 
 void myTrampoline()
 {
+	FileHandler logger;
 	// Call logging function to indicate we've entered the trampoline
 	logFunction();
 	// Save registers
 	HANDLE hThread = GetCurrentThread();
 	CONTEXT context;
-	context.ContextFlags = CONTEXT_FULL;  // Specify the desired context flags
+	DWORD eFlags;
+	context.ContextFlags = CONTEXT_FULL;
 	GetThreadContext(hThread, &context);
-
 	// Call the hook callback function
 	jumpHookCallback(context);
-
 	// Restore registers
+	context.ContextFlags = CONTEXT_INTEGER;  // Specify the desired context flags
 	SetThreadContext(hThread, &context);
-
+	if (!SetThreadContext(hThread, &context)) {
+		logger.log(LOG_FILE_PATH, "SetThreadContext failed with error: " + std::to_string(GetLastError()));
+	}
+	restoreJumpHook = hookAtFunctionAddress + 0x0C;
 	RunAssemblyCode(restoreJumpHook);
+	logger.log(LOG_FILE_PATH, "should'nt got here 2");
 }
 
 MAPLESUPERBOTDLL_API DWORD runBot()
@@ -82,7 +88,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 		//GetLastError();
 		return 0;
 	}
-	uintptr_t hookAtFunctionAddress = hookAtFunctionModuleAddress + MONSTER_POSITION_ACCESS_FUNCTION_OFFSET_FROM_MODULE;
+	hookAtFunctionAddress = hookAtFunctionModuleAddress + MONSTER_POSITION_ACCESS_FUNCTION_OFFSET_FROM_MODULE;
 	logger.log(LOG_FILE_PATH, "started bot");
 	//logger.log(LOG_FILE_PATH, "MonsterPositionFunction address: " + std::to_string(hookAtFunctionAddress));
 	while (true) {
