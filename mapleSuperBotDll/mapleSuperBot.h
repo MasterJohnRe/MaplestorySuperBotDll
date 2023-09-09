@@ -41,6 +41,6 @@ private:
 	std::vector<int> squaresMonsterCounterVector;
 	std::vector<std::vector<Point<DWORD, 2>>> monstersSquares;
 	unsigned int numberOfMonsters = 0;
-	bool isHookOn = false;
+	bool isHookOn;
 	int positionCounter = 0;
 };
