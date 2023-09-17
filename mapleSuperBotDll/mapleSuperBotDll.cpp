@@ -8,61 +8,20 @@
 #include "fileHandler.h"
 
 
-std::string ERRORS_LOG_FILE_PATH = "C:/logs/mapleSuperBotDll/error_logs.txt";
-std::string SUCCESS_LOG_FILE_PATH = "C:/logs/mapleSuperBotDll/success_logs.txt";
+std::string ERRORS_LOG_FILE_PATH = "C:/logs/HwBpHookDllLf2/error_logs.txt";
+std::string SUCCESS_LOG_FILE_PATH = "C:/logs/HwBpHookDllLf2/success_logs.txt";
 
 ULONG FIRST_HANDLER = 1;
 
 std::string ENABLE_HWBP_HOOK = "enable";
 std::string DISABLE_HWBP_HOOK = "disable";
 
-unsigned int const X_OFFSET = 0x88;
-unsigned int const Y_OFFSET = 0x92;
-const int X = 0;
-const int Y = 1;
-const LPCSTR MAPLESTORY_HEALTH_MODULE_NAME = "maplestory.exe";
-const uintptr_t MAPLESTORY_HEATLH_FUNCTION_OFFSET = 0x38A8818;
+const LPCSTR LF2_HEALTH_MODULE_NAME = "lf2.exe";
+const DWORD LF2_HEALTH_FUNCTION_OFFSET = 0x2E95C;
 MapleSuperBot superBot;
+DWORD hookAtAddress;
 
-//remove this and replace this with AddVectoredExceptionHandler
-LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
-{
-	FileHandler logger;
-	DWORD dwEndsceneJMP;
-	//Check exception type
-	if (pExceptionInfo->ExceptionRecord->ExceptionCode == STATUS_BREAKPOINT || pExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP)
-	{
-		// get value of register that holds the player health
-		DWORD playerHealth = pExceptionInfo->ContextRecord->R13;
-		logger.log(SUCCESS_LOG_FILE_PATH, "player Health: " + std::to_string(pExceptionInfo->ContextRecord->R13));
-		logger.log(SUCCESS_LOG_FILE_PATH, "player Health address: " + std::to_string((pExceptionInfo->ContextRecord->R14 + 40)));
-		return EXCEPTION_CONTINUE_EXECUTION; //Copies all registers from pExceptionInfo to the real registers
-	}
-	else {
-		logger.log(ERRORS_LOG_FILE_PATH, "Wrong exception code: " + std::to_string(pExceptionInfo->ExceptionRecord->ExceptionCode));
-	}
-
-	return EXCEPTION_CONTINUE_SEARCH; //Keep searching for any exceptions
-}
-
-
-DWORD registerExceptionHandler() {
-	FileHandler logger;
-	PVOID handle = AddVectoredExceptionHandler(FIRST_HANDLER, UnhandledExceptionFilterNew);
-	if (handle == nullptr)
-	{
-		// Failed to register the exception handler
-		logger.log(ERRORS_LOG_FILE_PATH, "Failed to register exception handler\n");
-		return 1;
-	}
-	else {
-		logger.log(SUCCESS_LOG_FILE_PATH, "registered exception handler\n");
-	}
-	return 0;
-}
-
-
-DWORD changeHardwareBpHookState(std::string action, uintptr_t hookAtAddress) {
+DWORD changeHardwareBpHookState(std::string action, DWORD hookAtAddress) {
 	FileHandler logger;
 	logger.log(SUCCESS_LOG_FILE_PATH, "changing hardwareBpHookState");
 	HANDLE hThreadSnap = INVALID_HANDLE_VALUE;
@@ -105,15 +64,15 @@ DWORD changeHardwareBpHookState(std::string action, uintptr_t hookAtAddress) {
 							context.Dr7 = 0x00000001;
 							logger.log(SUCCESS_LOG_FILE_PATH, "set DR values successfully");
 						}
-						else if (action == DISABLE_HWBP_HOOK) 
+						else if (action == DISABLE_HWBP_HOOK)
 						{
 							context.Dr0 = 0; //Dr0 - Dr3 contain the address you want to break at
 							context.Dr7 = 0;
 							logger.log(SUCCESS_LOG_FILE_PATH, "disabled hook");
 						}
-						
 
-						if(!SetThreadContext(hThread, &context)){
+
+						if (!SetThreadContext(hThread, &context)) {
 							logger.log(ERRORS_LOG_FILE_PATH, "couldn't get set Thread Context for the error code: " + std::to_string(GetLastError()));
 						}
 					}
@@ -133,17 +92,68 @@ DWORD changeHardwareBpHookState(std::string action, uintptr_t hookAtAddress) {
 	}
 }
 
+
+
+//remove this and replace this with AddVectoredExceptionHandler
+LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
+{
+	MemoryAccess memoryHandler = MemoryAccess();
+	//DWORD processId = memoryHandler.getGamePID(LF2_HEALTH_MODULE_NAME);
+	HMODULE hModule = GetModuleHandleA(LF2_HEALTH_MODULE_NAME);
+	FileHandler logger;
+	DWORD dwEndsceneJMP;
+	//Check exception type
+	if (pExceptionInfo->ExceptionRecord->ExceptionCode == STATUS_BREAKPOINT || pExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP)
+	{
+		// get value of register that holds the player health
+		logger.log(SUCCESS_LOG_FILE_PATH, "player Health address: " + std::to_string((pExceptionInfo->ContextRecord->Eax + 0x2FC)));
+		// Reset the debug registers (DR0-DR3) and DR7
+
+		pExceptionInfo->ContextRecord->Dr0 = 0;
+		pExceptionInfo->ContextRecord->Dr1 = 0;
+		pExceptionInfo->ContextRecord->Dr2 = 0;
+		pExceptionInfo->ContextRecord->Dr3 = 0;
+		pExceptionInfo->ContextRecord->Dr7 = 0;
+		superBot.setIsHookOn(false);
+		return EXCEPTION_CONTINUE_EXECUTION; //Copies all registers from pExceptionInfo to the real registers
+	}
+	else {
+		logger.log(ERRORS_LOG_FILE_PATH, "Wrong exception code: " + std::to_string(pExceptionInfo->ExceptionRecord->ExceptionCode));
+	}
+	//if (pExceptionInfo->ContextRecord->Dr0 == 0) {
+	//	//enable hardware breakpoint
+	//	changeHardwareBpHookState(ENABLE_HWBP_HOOK, hookAtAddress);
+	//}
+	return EXCEPTION_CONTINUE_SEARCH; //Keep searching for any exceptions
+}
+
+
+DWORD registerExceptionHandler() {
+	FileHandler logger;
+	PVOID handle = AddVectoredExceptionHandler(FIRST_HANDLER, UnhandledExceptionFilterNew);
+	if (handle == nullptr)
+	{
+		// Failed to register the exception handler
+		logger.log(ERRORS_LOG_FILE_PATH, "Failed to register exception handler\n");
+		return 1;
+	}
+	else {
+		logger.log(SUCCESS_LOG_FILE_PATH, "registered exception handler\n");
+	}
+	return 0;
+}
+
+
 MAPLESUPERBOTDLL_API DWORD runBot()
 {
 	FileHandler logger;
-	uintptr_t hookAtAddress;
 	logger.log(SUCCESS_LOG_FILE_PATH, "started bot");
 	registerExceptionHandler();
-	HMODULE hModule = GetModuleHandleA(MAPLESTORY_HEALTH_MODULE_NAME);
+	HMODULE hModule = GetModuleHandleA(LF2_HEALTH_MODULE_NAME);
 	if (hModule == NULL)
 		return 0;
-	hookAtAddress = reinterpret_cast<uintptr_t>(hModule) + MAPLESTORY_HEATLH_FUNCTION_OFFSET;
-	//while (true) {
+	hookAtAddress = reinterpret_cast<DWORD>(hModule) + LF2_HEALTH_FUNCTION_OFFSET;
+	while (true) {
 		if (superBot.isMonstersPositionsAddressesVectorFull())
 		{
 			logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is full");
@@ -169,11 +179,11 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 				superBot.setIsHookOn(true);
 				logger.log(SUCCESS_LOG_FILE_PATH, "set isHookOn to true");
 				//sleep for 1 second so that the hook will full it's monsters
-				Sleep(1000);
+				//Sleep(1000);
 			}
 
 		}
-	//}
+	}
 	return 0;
 	
 }
