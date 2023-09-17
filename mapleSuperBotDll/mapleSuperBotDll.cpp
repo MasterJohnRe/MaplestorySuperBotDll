@@ -36,6 +36,12 @@ LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
 		DWORD playerHealth = pExceptionInfo->ContextRecord->R13;
 		logger.log(SUCCESS_LOG_FILE_PATH, "player Health: " + std::to_string(pExceptionInfo->ContextRecord->R13));
 		logger.log(SUCCESS_LOG_FILE_PATH, "player Health address: " + std::to_string((pExceptionInfo->ContextRecord->R14 + 40)));
+		pExceptionInfo->ContextRecord->Dr0 = 0;
+		pExceptionInfo->ContextRecord->Dr1 = 0;
+		pExceptionInfo->ContextRecord->Dr2 = 0;
+		pExceptionInfo->ContextRecord->Dr3 = 0;
+		pExceptionInfo->ContextRecord->Dr7 = 0;
+		superBot.setIsHookOn(false);
 		return EXCEPTION_CONTINUE_EXECUTION; //Copies all registers from pExceptionInfo to the real registers
 	}
 	else {
@@ -143,7 +149,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 	if (hModule == NULL)
 		return 0;
 	hookAtAddress = reinterpret_cast<uintptr_t>(hModule) + MAPLESTORY_HEATLH_FUNCTION_OFFSET;
-	//while (true) {
+	while (true) {
 		if (superBot.isMonstersPositionsAddressesVectorFull())
 		{
 			logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is full");
@@ -173,7 +179,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			}
 
 		}
-	//}
+	}
 	return 0;
 	
 }
