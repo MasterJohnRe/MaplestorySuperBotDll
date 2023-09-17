@@ -20,9 +20,9 @@ unsigned int const X_OFFSET = 0x88;
 unsigned int const Y_OFFSET = 0x92;
 const int X = 0;
 const int Y = 1;
+const LPCSTR MAPLESTORY_HEALTH_MODULE_NAME = "maplestory.exe";
+const uintptr_t MAPLESTORY_HEATLH_FUNCTION_OFFSET = 0x38A8818;
 MapleSuperBot superBot;
-uintptr_t HOOK_AT_INSTRUCTION_ADDRESS = 0xE568514;
-
 
 //remove this and replace this with AddVectoredExceptionHandler
 LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
@@ -32,20 +32,10 @@ LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
 	//Check exception type
 	if (pExceptionInfo->ExceptionRecord->ExceptionCode == STATUS_BREAKPOINT || pExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP)
 	{
-		// get value of register that holds the monster x and y Position Addreses
-		Point<DWORD, 2> newMonsterPositionAddress;
-		newMonsterPositionAddress[X] = pExceptionInfo->ContextRecord->Rsi + X_OFFSET;
-		newMonsterPositionAddress[Y] = pExceptionInfo->ContextRecord->Rsi + Y_OFFSET;
-		if (!superBot.isMonsterInAddressesVector(newMonsterPositionAddress) && !superBot.isMonstersPositionsAddressesVectorFull())
-		{
-			superBot.addToMonstersPositionsAddressesVector(newMonsterPositionAddress);
-			superBot.increasePositionCounter();
-			logger.log(SUCCESS_LOG_FILE_PATH, "monster number: " + std::to_string(superBot.getMonstersPositionsAddressesVector().size()));
-			logger.log(SUCCESS_LOG_FILE_PATH, "monster number: " + std::to_string(superBot.getnumberOfMonsters()));
-			logger.log(SUCCESS_LOG_FILE_PATH, "monster X position: " + std::to_string(newMonsterPositionAddress[X]));
-			logger.log(SUCCESS_LOG_FILE_PATH, "monster Y position: " + std::to_string(newMonsterPositionAddress[Y]));
-
-		}
+		// get value of register that holds the player health
+		DWORD playerHealth = pExceptionInfo->ContextRecord->R13;
+		logger.log(SUCCESS_LOG_FILE_PATH, "player Health: " + std::to_string(pExceptionInfo->ContextRecord->R13));
+		logger.log(SUCCESS_LOG_FILE_PATH, "player Health address: " + std::to_string((pExceptionInfo->ContextRecord->R14 + 40)));
 		return EXCEPTION_CONTINUE_EXECUTION; //Copies all registers from pExceptionInfo to the real registers
 	}
 	else {
@@ -72,7 +62,7 @@ DWORD registerExceptionHandler() {
 }
 
 
-DWORD changeHardwareBpHookState(std::string action) {
+DWORD changeHardwareBpHookState(std::string action, uintptr_t hookAtAddress) {
 	FileHandler logger;
 	logger.log(SUCCESS_LOG_FILE_PATH, "changing hardwareBpHookState");
 	HANDLE hThreadSnap = INVALID_HANDLE_VALUE;
@@ -107,7 +97,7 @@ DWORD changeHardwareBpHookState(std::string action) {
 					{
 						if (action == ENABLE_HWBP_HOOK)
 						{
-							context.Dr0 = HOOK_AT_INSTRUCTION_ADDRESS; //Dr0 - Dr3 contain the address you want to break at
+							context.Dr0 = hookAtAddress; //Dr0 - Dr3 contain the address you want to break at
 							//Those flags activate the breakpoints set in Dr0 - Dr3
 							//You can either set break on: EXECUTE, WRITE or ACCESS
 							//The Flags I'm using represent the break on write
@@ -146,15 +136,20 @@ DWORD changeHardwareBpHookState(std::string action) {
 MAPLESUPERBOTDLL_API DWORD runBot()
 {
 	FileHandler logger;
+	uintptr_t hookAtAddress;
 	logger.log(SUCCESS_LOG_FILE_PATH, "started bot");
 	registerExceptionHandler();
+	HMODULE hModule = GetModuleHandleA(MAPLESTORY_HEALTH_MODULE_NAME);
+	if (hModule == NULL)
+		return 0;
+	hookAtAddress = reinterpret_cast<uintptr_t>(hModule) + MAPLESTORY_HEATLH_FUNCTION_OFFSET;
 	//while (true) {
 		if (superBot.isMonstersPositionsAddressesVectorFull())
 		{
 			logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is full");
 			//logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is Full");
 			if (superBot.getIsHookOn()) {
-				changeHardwareBpHookState(DISABLE_HWBP_HOOK);
+				changeHardwareBpHookState(DISABLE_HWBP_HOOK, hookAtAddress);
 				superBot.setIsHookOn(false);
 				logger.log(SUCCESS_LOG_FILE_PATH, "set isHookOn to False");
 			}
@@ -170,7 +165,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			if (!superBot.getIsHookOn())
 			{
 				logger.log(SUCCESS_LOG_FILE_PATH, "got here");
-				changeHardwareBpHookState(ENABLE_HWBP_HOOK);
+				changeHardwareBpHookState(ENABLE_HWBP_HOOK, hookAtAddress);
 				superBot.setIsHookOn(true);
 				logger.log(SUCCESS_LOG_FILE_PATH, "set isHookOn to true");
 				//sleep for 1 second so that the hook will full it's monsters
