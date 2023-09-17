@@ -16,12 +16,13 @@ ULONG FIRST_HANDLER = 1;
 std::string ENABLE_HWBP_HOOK = "enable";
 std::string DISABLE_HWBP_HOOK = "disable";
 
-unsigned int const X_OFFSET = 0x88;
-unsigned int const Y_OFFSET = 0x92;
+unsigned int const X_OFFSET = 0x00;
+unsigned int const Y_OFFSET = 0x04;
 const int X = 0;
 const int Y = 1;
 MapleSuperBot superBot;
-uintptr_t HOOK_AT_INSTRUCTION_ADDRESS = 0xE568514;
+const LPCSTR MAPLESTORY_MONSTER_POSITION_FUNCTION_MODULE_NAME = "maplestory.exe";
+const uintptr_t MAPLESTORY_MONSTER_POSITION_FUNCTION_OFFSET = 0x25AC460;
 
 
 //remove this and replace this with AddVectoredExceptionHandler
@@ -34,18 +35,24 @@ LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
 	{
 		// get value of register that holds the monster x and y Position Addreses
 		Point<DWORD, 2> newMonsterPositionAddress;
-		newMonsterPositionAddress[X] = pExceptionInfo->ContextRecord->Rsi + X_OFFSET;
-		newMonsterPositionAddress[Y] = pExceptionInfo->ContextRecord->Rsi + Y_OFFSET;
+		newMonsterPositionAddress[X] = pExceptionInfo->ContextRecord->Rdi + X_OFFSET;
+		newMonsterPositionAddress[Y] = pExceptionInfo->ContextRecord->Rdi + Y_OFFSET;
 		if (!superBot.isMonsterInAddressesVector(newMonsterPositionAddress) && !superBot.isMonstersPositionsAddressesVectorFull())
 		{
 			superBot.addToMonstersPositionsAddressesVector(newMonsterPositionAddress);
 			superBot.increasePositionCounter();
 			logger.log(SUCCESS_LOG_FILE_PATH, "monster number: " + std::to_string(superBot.getMonstersPositionsAddressesVector().size()));
-			logger.log(SUCCESS_LOG_FILE_PATH, "monster number: " + std::to_string(superBot.getnumberOfMonsters()));
-			logger.log(SUCCESS_LOG_FILE_PATH, "monster X position: " + std::to_string(newMonsterPositionAddress[X]));
-			logger.log(SUCCESS_LOG_FILE_PATH, "monster Y position: " + std::to_string(newMonsterPositionAddress[Y]));
+			logger.log(SUCCESS_LOG_FILE_PATH, "monster number: " + std::to_string(superBot.getnumberOfMonsters())); //TODO: fix getNumberOfMonsters function to dynamically get monsters
+			logger.log(SUCCESS_LOG_FILE_PATH, "monster X position Address: " + std::to_string(newMonsterPositionAddress[X]));
+			logger.log(SUCCESS_LOG_FILE_PATH, "monster Y position Address: " + std::to_string(newMonsterPositionAddress[Y]));
 
 		}
+		pExceptionInfo->ContextRecord->Dr0 = 0;
+		pExceptionInfo->ContextRecord->Dr1 = 0;
+		pExceptionInfo->ContextRecord->Dr2 = 0;
+		pExceptionInfo->ContextRecord->Dr3 = 0;
+		pExceptionInfo->ContextRecord->Dr7 = 0;
+		superBot.setIsHookOn(false);
 		return EXCEPTION_CONTINUE_EXECUTION; //Copies all registers from pExceptionInfo to the real registers
 	}
 	else {
@@ -72,7 +79,7 @@ DWORD registerExceptionHandler() {
 }
 
 
-DWORD changeHardwareBpHookState(std::string action) {
+DWORD changeHardwareBpHookState(std::string action, uintptr_t hookAtAddress) {
 	FileHandler logger;
 	logger.log(SUCCESS_LOG_FILE_PATH, "changing hardwareBpHookState");
 	HANDLE hThreadSnap = INVALID_HANDLE_VALUE;
@@ -107,7 +114,7 @@ DWORD changeHardwareBpHookState(std::string action) {
 					{
 						if (action == ENABLE_HWBP_HOOK)
 						{
-							context.Dr0 = HOOK_AT_INSTRUCTION_ADDRESS; //Dr0 - Dr3 contain the address you want to break at
+							context.Dr0 = hookAtAddress; //Dr0 - Dr3 contain the address you want to break at
 							//Those flags activate the breakpoints set in Dr0 - Dr3
 							//You can either set break on: EXECUTE, WRITE or ACCESS
 							//The Flags I'm using represent the break on write
@@ -143,18 +150,82 @@ DWORD changeHardwareBpHookState(std::string action) {
 	}
 }
 
+void setDebugRegisters(DWORD mainThreadID, uintptr_t hookAtAddress) {
+	FileHandler logger;
+	logger.log(SUCCESS_LOG_FILE_PATH, "checking if hardwareBpExists");
+	HANDLE hThread = OpenThread(THREAD_GET_CONTEXT | THREAD_SET_CONTEXT | THREAD_SUSPEND_RESUME, 0, mainThreadID);
+	if (hThread)
+	{
+		CONTEXT context;
+		context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+		SuspendThread(hThread); //Suspend the thread so we can safely set a breakpoint
+
+		if (GetThreadContext(hThread, &context))
+		{
+			if (context.Dr0 != hookAtAddress || context.Dr7 != 0x00000001) {
+				logger.log(SUCCESS_LOG_FILE_PATH, "Debug Registers are not set");
+				context.Dr0 = hookAtAddress;
+				context.Dr6 = 0x00000000;
+				context.Dr7 = 0x00000001;
+			}
+			if (!SetThreadContext(hThread, &context)) {
+				logger.log(ERRORS_LOG_FILE_PATH, "couldn't set Thread Context for the error code: " + std::to_string(GetLastError()));
+			}
+		}
+		else {
+			logger.log(ERRORS_LOG_FILE_PATH, "GetThreadContext failed");
+		}
+		ResumeThread(hThread);
+		CloseHandle(hThread);
+	}
+	else {
+		logger.log(ERRORS_LOG_FILE_PATH, "OpenThread failed");
+	}
+}
+
+DWORD GetMainThreadId() {
+	const std::shared_ptr<void> hThreadSnapshot(CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0), CloseHandle);
+	if (hThreadSnapshot.get() == INVALID_HANDLE_VALUE) {
+		throw std::runtime_error("GetMainThreadId failed");
+	}
+
+	THREADENTRY32 tEntry;
+	tEntry.dwSize = sizeof(THREADENTRY32);
+	DWORD result = 0;
+	DWORD currentPID = GetCurrentProcessId();
+
+	for (BOOL success = Thread32First(hThreadSnapshot.get(), &tEntry);
+		!result && success && GetLastError() != ERROR_NO_MORE_FILES;
+		success = Thread32Next(hThreadSnapshot.get(), &tEntry))
+	{
+		if (tEntry.th32OwnerProcessID == currentPID) {
+			result = tEntry.th32ThreadID;
+		}
+	}
+
+	return result;
+}
+
 MAPLESUPERBOTDLL_API DWORD runBot()
 {
 	FileHandler logger;
+	uintptr_t hookAtAddress;
+	DWORD mainThreadID = GetMainThreadId();
+	HMODULE hModule = GetModuleHandleA(MAPLESTORY_MONSTER_POSITION_FUNCTION_MODULE_NAME);
+	if (hModule == NULL)
+		return 0;
+	hookAtAddress = reinterpret_cast<uintptr_t>(hModule) + MAPLESTORY_MONSTER_POSITION_FUNCTION_OFFSET;
 	logger.log(SUCCESS_LOG_FILE_PATH, "started bot");
+	logger.log(SUCCESS_LOG_FILE_PATH, "main thread ID: " + std::to_string(mainThreadID));
 	registerExceptionHandler();
-	//while (true) {
+
+	while (true) {
 		if (superBot.isMonstersPositionsAddressesVectorFull())
 		{
 			logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is full");
 			//logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is Full");
 			if (superBot.getIsHookOn()) {
-				changeHardwareBpHookState(DISABLE_HWBP_HOOK);
+				changeHardwareBpHookState(DISABLE_HWBP_HOOK, hookAtAddress);
 				superBot.setIsHookOn(false);
 				logger.log(SUCCESS_LOG_FILE_PATH, "set isHookOn to False");
 			}
@@ -167,18 +238,19 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 		}
 		else {
 			//logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is not full");
+			setDebugRegisters(mainThreadID, hookAtAddress);
 			if (!superBot.getIsHookOn())
 			{
 				logger.log(SUCCESS_LOG_FILE_PATH, "got here");
-				changeHardwareBpHookState(ENABLE_HWBP_HOOK);
+				changeHardwareBpHookState(ENABLE_HWBP_HOOK, hookAtAddress);
 				superBot.setIsHookOn(true);
 				logger.log(SUCCESS_LOG_FILE_PATH, "set isHookOn to true");
 				//sleep for 1 second so that the hook will full it's monsters
-				Sleep(1000);
+				Sleep(1000);//TODO: lower this
 			}
 
 		}
-	//}
+	}
 	return 0;
 	
 }

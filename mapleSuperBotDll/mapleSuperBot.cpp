@@ -17,7 +17,7 @@ const std::vector<unsigned int> MAPLESTORY_PLAYER_POSITION_Y_OFFSETS = {0x00, 0x
 const LPCSTR MAPLESTORY_HANDLE_NAME = (LPCSTR)"MapleStory";
 const wchar_t* MAPLESTORY_MOD_NAME = L"HeavenMS-localhost-WINDOW.exe";
 FileHandler logger;
-std::string LOG_FILE_PATH2 = "C:/logs2/logs.txt";
+std::string LOG_FILE_PATH2 = "C:/logs/mapleSuperBotDll/success_positions_logs.txt";;
 
 
 uintptr_t GetModuleBaseAddress(DWORD procId, const wchar_t* modName)
