@@ -16,13 +16,13 @@ ULONG FIRST_HANDLER = 1;
 std::string ENABLE_HWBP_HOOK = "enable";
 std::string DISABLE_HWBP_HOOK = "disable";
 
-unsigned int const X_OFFSET = 0x00;
-unsigned int const Y_OFFSET = 0x04;
+unsigned int const X_OFFSET = 0x70;
+unsigned int const Y_OFFSET = 0x74;
 const int X = 0;
 const int Y = 1;
 MapleSuperBot superBot;
-const LPCSTR MAPLESTORY_MONSTER_POSITION_FUNCTION_MODULE_NAME = "maplestory.exe";
-const uintptr_t MAPLESTORY_MONSTER_POSITION_FUNCTION_OFFSET = 0x25AC460;
+const LPCSTR MAPLESTORY_MONSTER_POSITION_FUNCTION_MODULE_NAME = "SHAPE2D.DLL";//"maplestory.exe";
+const uintptr_t MAPLESTORY_MONSTER_POSITION_FUNCTION_OFFSET = 0x170A1;
 
 
 //remove this and replace this with AddVectoredExceptionHandler
@@ -35,8 +35,8 @@ LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
 	{
 		// get value of register that holds the monster x and y Position Addreses
 		Point<DWORD, 2> newMonsterPositionAddress;
-		newMonsterPositionAddress[X] = pExceptionInfo->ContextRecord->Rdi + X_OFFSET;
-		newMonsterPositionAddress[Y] = pExceptionInfo->ContextRecord->Rdi + Y_OFFSET;
+		newMonsterPositionAddress[X] = pExceptionInfo->ContextRecord->Rsi + X_OFFSET;
+		newMonsterPositionAddress[Y] = pExceptionInfo->ContextRecord->Rsi + Y_OFFSET;
 		if (!superBot.isMonsterInAddressesVector(newMonsterPositionAddress) && !superBot.isMonstersPositionsAddressesVectorFull())
 		{
 			superBot.addToMonstersPositionsAddressesVector(newMonsterPositionAddress);
@@ -52,7 +52,10 @@ LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
 		pExceptionInfo->ContextRecord->Dr2 = 0;
 		pExceptionInfo->ContextRecord->Dr3 = 0;
 		pExceptionInfo->ContextRecord->Dr7 = 0;
+
 		superBot.setIsHookOn(false);
+		//pExceptionInfo->ContextRecord->EFlags |= 00010000;
+
 		return EXCEPTION_CONTINUE_EXECUTION; //Copies all registers from pExceptionInfo to the real registers
 	}
 	else {
@@ -222,8 +225,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 	while (true) {
 		if (superBot.isMonstersPositionsAddressesVectorFull())
 		{
-			logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is full");
-			//logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is Full");
+			//logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is full");
 			if (superBot.getIsHookOn()) {
 				changeHardwareBpHookState(DISABLE_HWBP_HOOK, hookAtAddress);
 				superBot.setIsHookOn(false);
@@ -232,7 +234,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			//superBot.printMonstersPositions();
 			//execute attack
 			//superBot.initializeSquares();
-			superBot.printMonstersSquares();
+			//superBot.printMonstersSquares();
 			//superBot.executeAttack();
 			//maybe set timeout to like 0.5 so that the positions adress vector gets full again.
 		}
@@ -246,7 +248,7 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 				superBot.setIsHookOn(true);
 				logger.log(SUCCESS_LOG_FILE_PATH, "set isHookOn to true");
 				//sleep for 1 second so that the hook will full it's monsters
-				Sleep(1000);//TODO: lower this
+				Sleep(100);//TODO: lower this
 			}
 
 		}
