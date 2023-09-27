@@ -16,13 +16,13 @@ ULONG FIRST_HANDLER = 1;
 std::string ENABLE_HWBP_HOOK = "enable";
 std::string DISABLE_HWBP_HOOK = "disable";
 
-unsigned int const X_OFFSET = 0x70;
-unsigned int const Y_OFFSET = 0x74;
+unsigned int const X_OFFSET = 0x00;
+unsigned int const Y_OFFSET = 0x04;
 const int X = 0;
 const int Y = 1;
 MapleSuperBot superBot;
-const LPCSTR MAPLESTORY_MONSTER_POSITION_FUNCTION_MODULE_NAME = "SHAPE2D.DLL";//"maplestory.exe";
-const uintptr_t MAPLESTORY_MONSTER_POSITION_FUNCTION_OFFSET = 0x170A1;
+const LPCSTR MAPLESTORY_MONSTER_POSITION_FUNCTION_MODULE_NAME = "GR2D_DX9.DLL";//"maplestory.exe";
+const uintptr_t MAPLESTORY_MONSTER_POSITION_FUNCTION_OFFSET = 0x153A4A;
 
 
 //remove this and replace this with AddVectoredExceptionHandler
@@ -35,8 +35,8 @@ LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
 	{
 		// get value of register that holds the monster x and y Position Addreses
 		Point<DWORD, 2> newMonsterPositionAddress;
-		newMonsterPositionAddress[X] = pExceptionInfo->ContextRecord->Rsi + X_OFFSET;
-		newMonsterPositionAddress[Y] = pExceptionInfo->ContextRecord->Rsi + Y_OFFSET;
+		newMonsterPositionAddress[X] = pExceptionInfo->ContextRecord->Rdi + X_OFFSET;
+		newMonsterPositionAddress[Y] = pExceptionInfo->ContextRecord->Rdi + Y_OFFSET;
 		if (!superBot.isMonsterInAddressesVector(newMonsterPositionAddress) && !superBot.isMonstersPositionsAddressesVectorFull())
 		{
 			superBot.addToMonstersPositionsAddressesVector(newMonsterPositionAddress);
