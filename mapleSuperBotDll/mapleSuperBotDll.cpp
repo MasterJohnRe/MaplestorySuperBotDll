@@ -21,9 +21,25 @@ unsigned int const Y_OFFSET = 0x04;
 const int X = 0;
 const int Y = 1;
 MapleSuperBot superBot;
-const LPCSTR MAPLESTORY_MONSTER_POSITION_FUNCTION_MODULE_NAME = "GR2D_DX9.DLL";//"maplestory.exe";
+const LPCSTR MAPLESTORY_MONSTER_POSITION_FUNCTION_MODULE_NAME = "GR2D_DX9.DLL";;
 const uintptr_t MAPLESTORY_MONSTER_POSITION_FUNCTION_OFFSET = 0x153A4A;
 
+
+//delete later
+const float PLAYER_SPEED = 175.8;//123.8;
+const int ATTACK_WIDTH = 310;
+const int ATTACK_HEIGHT = 30;
+const int RANGE_FOR_DASH = 355;
+const int TILE_UP_DISTANCE = 150;//TODO: edit this
+const int SIDE_DASH_TIME_FOR_FIRST_ALT = 0.25;
+const int DASH_UP_TIME_FOR_FIRST_ALT = 0.25;
+const int DASH_UP_TIME_FOR_SECOND_ALT = 0.1;
+const int FALL_DOWN_TIME_FOR_ALT = 0.1;
+const int DASH_UP_ANIMATION_TIME = 0.9;
+const int SIDE_DASH_ANIMATION_TIME = 0.93;
+const int FALL_DOWN_ANIMATION_TIME = 0.9;
+const int TIME_FOR_CLICK = 0.1;
+const LPCSTR MAPLESTORY_HANDLE_NAME = (LPCSTR)"MapleStory";
 
 //remove this and replace this with AddVectoredExceptionHandler
 LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
@@ -34,9 +50,9 @@ LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
 	if (pExceptionInfo->ExceptionRecord->ExceptionCode == STATUS_BREAKPOINT || pExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_SINGLE_STEP)
 	{
 		// get value of register that holds the monster x and y Position Addreses
-		Point<DWORD, 2> newMonsterPositionAddress;
-		newMonsterPositionAddress[X] = pExceptionInfo->ContextRecord->Rdi + X_OFFSET;
-		newMonsterPositionAddress[Y] = pExceptionInfo->ContextRecord->Rdi + Y_OFFSET;
+		Point<uintptr_t, 2> newMonsterPositionAddress;
+		newMonsterPositionAddress[X] = pExceptionInfo->ContextRecord->Rdi + X_OFFSET;//Rdi + X_OFFSET;
+		newMonsterPositionAddress[Y] = pExceptionInfo->ContextRecord->Rdi + Y_OFFSET;//Rdi + Y_OFFSET;
 		if (!superBot.isMonsterInAddressesVector(newMonsterPositionAddress) && !superBot.isMonstersPositionsAddressesVectorFull())
 		{
 			superBot.addToMonstersPositionsAddressesVector(newMonsterPositionAddress);
@@ -209,6 +225,39 @@ DWORD GetMainThreadId() {
 	return result;
 }
 
+void sendKeyWithSendMessageTest(WORD key, char letter, int time = 0) {
+	HWND window = FindWindowA(NULL, MAPLESTORY_HANDLE_NAME);
+	SetForegroundWindow(window);
+	// Define the input event for a arrow key press
+	INPUT input = { 0 };
+	input.type = INPUT_KEYBOARD;
+	input.ki.wVk = key; // virtual key code for left arrow key
+	input.ki.dwFlags = 0; // key press
+
+	// Send the key press event
+	SendInput(1, &input, sizeof(INPUT));
+
+	// Wait for 3 seconds (3000 milliseconds)
+	Sleep(time * 1000);
+
+	// Define the input event for a left arrow key release
+	input.ki.dwFlags = KEYEVENTF_KEYUP; // key release
+
+	// Send the key release event
+	SendInput(1, &input, sizeof(INPUT));
+}
+
+void dashUpTest() {
+	FileHandler logger;
+	logger.log(SUCCESS_LOG_FILE_PATH, "dashing up");
+	sendKeyWithSendMessageTest(VK_LEFT, 0,  TIME_FOR_CLICK);
+	Sleep(DASH_UP_TIME_FOR_FIRST_ALT * 1000);
+	sendKeyWithSendMessageTest(VK_RIGHT, 0, TIME_FOR_CLICK);
+	Sleep(DASH_UP_TIME_FOR_SECOND_ALT * 1000);
+	sendKeyWithSendMessageTest(VK_LEFT, 0, TIME_FOR_CLICK);
+	Sleep(DASH_UP_ANIMATION_TIME);
+}
+
 MAPLESUPERBOTDLL_API DWORD runBot()
 {
 	FileHandler logger;
@@ -221,8 +270,16 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 	logger.log(SUCCESS_LOG_FILE_PATH, "started bot");
 	logger.log(SUCCESS_LOG_FILE_PATH, "main thread ID: " + std::to_string(mainThreadID));
 	registerExceptionHandler();
+	superBot.initializePlayerPosition();
+	//superBot.logPlayerPosition();
+	Sleep(2);
+	dashUpTest();
+	Sleep(2);
+	dashUpTest();
+	Sleep(2);
+	dashUpTest();
 
-	while (true) {
+	/*while (true) {
 		if (superBot.isMonstersPositionsAddressesVectorFull())
 		{
 			//logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is full");
@@ -233,10 +290,10 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			}
 			//superBot.printMonstersPositions();
 			//execute attack
-			//superBot.initializeSquares();
+			superBot.initializeSquares();
 			//superBot.printMonstersSquares();
-			//superBot.executeAttack();
-			//maybe set timeout to like 0.5 so that the positions adress vector gets full again.
+			superBot.executeAttack();
+			Sleep(200);//0.2 seconds TODO: check how much does this need to be and lower it
 		}
 		else {
 			//logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is not full");
@@ -247,12 +304,13 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 				changeHardwareBpHookState(ENABLE_HWBP_HOOK, hookAtAddress);
 				superBot.setIsHookOn(true);
 				logger.log(SUCCESS_LOG_FILE_PATH, "set isHookOn to true");
-				//sleep for 1 second so that the hook will full it's monsters
-				Sleep(100);//TODO: lower this
+				//sleep for 0.2 second so that the hook will full it's monsters
+				Sleep(200);//TODO: lower this
 			}
 
 		}
 	}
+	*/
 	return 0;
 	
 }
