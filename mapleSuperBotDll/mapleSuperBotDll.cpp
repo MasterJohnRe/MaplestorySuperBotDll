@@ -238,11 +238,11 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			}
 			//superBot.printMonstersPositions();
 			//execute attack
-			/*superBot.initializeSquares();
+			superBot.initializeSquares();
 			//superBot.printMonstersSquares();
 			superBot.executeAttack();
 			Sleep(200);//0.2 seconds TODO: check how much does this need to be and lower it
-			*/
+			
 		}
 		else {
 			//logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is not full");

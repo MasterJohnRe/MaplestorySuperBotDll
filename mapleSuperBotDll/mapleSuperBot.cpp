@@ -6,8 +6,8 @@ int nmapleSuperBotDll = 0;
 const int X = 0;
 const int Y = 1;
 const float PLAYER_SPEED = 175.8;//123.8;
-const int ATTACK_WIDTH = 310;
-const int ATTACK_HEIGHT = 130;
+const int ATTACK_WIDTH = 30;
+const int ATTACK_HEIGHT = 80;
 const int RANGE_FOR_DASH = 355;
 const int TILE_UP_DISTANCE = 150;//TODO: edit this
 const int SIDE_DASH_TIME_FOR_FIRST_ALT = 0.25;
@@ -18,6 +18,12 @@ const int DASH_UP_ANIMATION_TIME = 0.9;
 const int SIDE_DASH_ANIMATION_TIME = 0.93;
 const int FALL_DOWN_ANIMATION_TIME = 0.9;
 
+const int PLAYER_Y_OFFSET = -100;
+
+const int MAP_MAX_X = -100;
+const int MAP_MIN_X = -2100;
+const int MAP_MAX_Y = 0;
+const int MAP_MIN_Y = -400;
 //const unsigned int RESTORE_JUMP_HOOK = 0x0068A6B7;
 const unsigned int MAPLESTORY_NUMBER_OF_MONSTERS_BASE_ADDRESS = 0x007EBFA4;
 const std::vector<unsigned int> MAPLESTORY_NUMBER_OF_MONSTERS_OFFSETS = { 0x10 };
@@ -88,21 +94,18 @@ float getDistance(int x1, int y1, int x2, int y2) {
 	return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2) * 1.0);
 }
 
-bool isMonsterInRange(HANDLE process, Point<uintptr_t, 2> playerPositionAddresses, Point<uintptr_t, 2> monsterPositionAddresses, int attackWidth, int attackHeight) {
+bool isSquareInRange(HANDLE process, Point<uintptr_t, 2> playerPositionAddresses, float biggestSquareX, float biggestSquareY , int attackWidth, int attackHeight) {
 	logger.log(LOG_FILE_PATH2, "got here111");
 	signed int playerX = 0;
 	signed int playerY = 0;
-	signed int monsterX = 0;
-	signed int monsterY = 0;
 	DWORD issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[X]), &playerX, sizeof(unsigned int), 0);
 	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[Y]), &playerY, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[X]), &monsterX, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[Y]), &monsterY, sizeof(unsigned int), 0);
-	logger.log(LOG_FILE_PATH2, "monsterX: " + std::to_string(monsterX)  + ", playerX: " + std::to_string(playerX));
-	logger.log(LOG_FILE_PATH2, "monsterY: " + std::to_string(monsterY) + ", playerY: " + std::to_string(playerY));
-	if (abs(monsterX - playerX) > attackWidth)
+	playerY = playerY + PLAYER_Y_OFFSET;
+	logger.log(LOG_FILE_PATH2, "playerX: " + std::to_string(playerX)  + ", playerY: " + std::to_string(playerY));
+	logger.log(LOG_FILE_PATH2, "biggest square X: " + std::to_string(biggestSquareX) + ", biggest SquareY: " + std::to_string(biggestSquareY));
+	if (abs(biggestSquareX - playerX) > attackWidth)
 		return false;
-	if (abs(monsterY - playerY) > attackHeight)
+	if (abs(biggestSquareY - playerY) > attackHeight)
 		return false;
 	return true;
 }
@@ -158,34 +161,70 @@ void sendKey(int vk, BOOL bExtended, int timeToSleep = 0) {
 
 	return;
 }
+void turnLeft(HWND window, HANDLE process, int timeToSleep = 0) {
+	FileHandler logger;
+	logger.log(LOG_FILE_PATH2, "turning left");
+	SetForegroundWindow(window);
+	KEYBDINPUT leftArrowKb = { 0 };
+	// Define the input event for a arrow key press
+	INPUT KEY_B;
+	int leftArrowScan = MapVirtualKey(VK_LEFT, 0);
 
-void changeDirectionToMonster(HWND window, HANDLE process, Point<uintptr_t, 2> playerPositionAddresses, Point<uintptr_t, 2> monsterPositionAddresses) {
+	leftArrowKb.wVk = VK_LEFT;
+	KEY_B.type = INPUT_KEYBOARD;
+	KEY_B.ki = leftArrowKb;
+	KEY_B.ki.wScan = leftArrowScan;  // left arrow key scan code
+
+	// Press and release the left arrow key
+
+	SendInput(1, &KEY_B, sizeof(INPUT));
+	Sleep(timeToSleep * 1000 + 50);
+	leftArrowKb.dwFlags = KEYEVENTF_KEYUP;
+	KEY_B.ki = leftArrowKb;
+	SendInput(1, &KEY_B, sizeof(INPUT));
+}
+void turnRight(HWND window, HANDLE process, int timeToSleep = 0) {
+	FileHandler logger;
+	logger.log(LOG_FILE_PATH2, "turning right");
+	SetForegroundWindow(window);
+	KEYBDINPUT rightArrowKb = { 0 };
+	// Define the input event for a arrow key press
+	INPUT KEY_B;
+	int rightArrowScan = MapVirtualKey(VK_RIGHT, 0);
+
+	rightArrowKb.wVk = VK_RIGHT;
+	KEY_B.type = INPUT_KEYBOARD;
+	KEY_B.ki = rightArrowKb;
+	KEY_B.ki.wScan = rightArrowScan;  // left arrow key scan code
+
+	// Press and release the left arrow key
+
+	SendInput(1, &KEY_B, sizeof(INPUT));
+	Sleep(timeToSleep * 1000 + 50);
+	rightArrowKb.dwFlags = KEYEVENTF_KEYUP;
+	KEY_B.ki = rightArrowKb;
+	SendInput(1, &KEY_B, sizeof(INPUT));
+}
+
+void changeDirectionToSquare(HWND window, HANDLE process, Point<uintptr_t, 2> playerPositionAddresses, signed int squareX, signed int SquareY) {
 	signed int playerX = 0;
-	signed int playerY = 0;
-	signed int monsterX = 0;
-	signed int monsterY = 0;
 	DWORD issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[X]), &playerX, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[Y]), &playerY, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[X]), &monsterY, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[Y]), &monsterY, sizeof(unsigned int), 0);
-	if ((playerX - monsterX) > 0) {
+	if (playerX > squareX) {
 		logger.log(LOG_FILE_PATH2,"went left");
-		sendKey(VK_LEFT, 0,0.05);
+		//sendKey(VK_LEFT, 0,0.15);
+		turnLeft(window, process, 0.15);
 	}
 	else {
 		logger.log(LOG_FILE_PATH2, "went right");
-		sendKey(VK_RIGHT, 0, 0.05);
+		//sendKey(VK_RIGHT, 0, 0.15);
+		turnRight(window, process, 0.15);
 	}
 }
 
-bool isMonsterExists(HWND window, HANDLE process, Point<uintptr_t, 2> monsterPositionAddresses) {
-	signed int monsterX = 0;
-	signed int monsterY = 0;
-	DWORD issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[X]), &monsterX, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[Y]), &monsterY, sizeof(unsigned int), 0);
+bool isSquareExists(HWND window, HANDLE process, signed int squareX, signed int squareY) {
 	logger.log(LOG_FILE_PATH2, "isMonsterExists Output:");
-	logger.log(LOG_FILE_PATH2,"monsterX: " + std::to_string(monsterX) + ", monsterY: " + std::to_string(monsterY));
-	if (monsterX <= -1000 || monsterX >= 2000)
+	logger.log(LOG_FILE_PATH2,"squareX: " + std::to_string(squareX) + ", squareY: " + std::to_string(squareY));
+	if (squareX <= MAP_MIN_X || squareX >= MAP_MAX_X || squareY <= MAP_MIN_Y || squareY >= MAP_MAX_Y)
 	{
 		return false;
 	}
@@ -319,93 +358,77 @@ void fallDown(HWND window, HANDLE process) {
 	SendInput(2, input, sizeof(INPUT));
 }
 
-void goToMonster(HWND window, HANDLE process , Point<uintptr_t, 2> playerPositionAddresses, Point<uintptr_t, 2> monsterPositionAddresses) {
+
+
+void goToMonster(HWND window, HANDLE process , Point<uintptr_t, 2> playerPositionAddresses, signed int squareX, signed int squareY) {
 	signed int playerX = 0;
 	signed int playerY = 0;
-	signed int monsterX = 0;
-	signed int monsterY = 0;
 	DWORD issuccedded;
 
 	//handle X positioning
 	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[X]), &playerX, sizeof(unsigned int), 0);
 	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[Y]), &playerY, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[X]), &monsterX, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[Y]), &monsterY, sizeof(unsigned int), 0);
-	float distanceX = abs(monsterX - playerX);
+	playerY = playerY + PLAYER_Y_OFFSET;
+	float distanceX = abs(squareX - playerX);
 	logger.log(LOG_FILE_PATH2, "distanceX: " + std::to_string(distanceX));
 	while (distanceX > ATTACK_WIDTH) {
 		if (distanceX > RANGE_FOR_DASH) {
-			changeDirectionToMonster(window, process, playerPositionAddresses, monsterPositionAddresses);
+			changeDirectionToSquare(window, process, playerPositionAddresses, squareX, squareY);
 			dash(window, process);
 		}
 		else {
 			float timeToWalk = distanceX / PLAYER_SPEED;
 			logger.log(LOG_FILE_PATH2, "time to walk: " + std::to_string(timeToWalk));
-			if (monsterX - playerX > 0) {
+			if (squareX > playerX) {
 				logger.log(LOG_FILE_PATH2, "walking Right");
-				sendKeyWithSendMessage(window, VK_RIGHT, 0, timeToWalk);
+				//sendKey(VK_RIGHT, 0, timeToWalk);
+				turnRight(window, process, timeToWalk);
 
 			}
 			else {
 				logger.log(LOG_FILE_PATH2, "walking Left");
-				sendKeyWithSendMessage(window, VK_LEFT, 0, timeToWalk);
+				//sendKey(VK_LEFT, 0, timeToWalk);
+				turnLeft(window, process, timeToWalk);
 			}
 		}
 		//get new x distance and positioning of player and monster
 		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[X]), &playerX, sizeof(unsigned int), 0);
 		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[Y]), &playerY, sizeof(unsigned int), 0);
-		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[X]), &monsterX, sizeof(unsigned int), 0);
-		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[Y]), &monsterY, sizeof(unsigned int), 0);
+		playerY = playerY + PLAYER_Y_OFFSET;
 		logger.log(LOG_FILE_PATH2, "playerX: " + std::to_string(playerX) + "playerY: " + std::to_string(playerY));
-		logger.log(LOG_FILE_PATH2, "monsterX: " + std::to_string(monsterX) + "monsterY: " + std::to_string(monsterY));
-		distanceX = abs(monsterX - playerX);
+		logger.log(LOG_FILE_PATH2, "squareX: " + std::to_string(squareX) + "squareY: " + std::to_string(squareY));
+		distanceX = abs(squareX - playerX);
 		logger.log(LOG_FILE_PATH2, "distance: " + std::to_string(distanceX));
 	}
 
 	//handle Y positioning
 	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[X]), &playerX, sizeof(unsigned int), 0);
 	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[Y]), &playerY, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[X]), &monsterX, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[Y]), &monsterY, sizeof(unsigned int), 0);
-	float distanceY = abs(playerY - monsterY);
+	playerY = playerY + PLAYER_Y_OFFSET;
+	float distanceY = abs(playerY - squareY);
 	logger.log(LOG_FILE_PATH2, "distanceY: " + std::to_string(distanceY));
 	while (distanceY > ATTACK_HEIGHT) {
-		if (distanceY > TILE_UP_DISTANCE) {//must be tile up  or down from player
-			if (playerY - monsterY > 0) {
+		//if (distanceY > TILE_UP_DISTANCE) {//must be tile up  or down from player
+			if (playerY > squareY) {
 				dashUp(window, process);
 			}
 			else {
 				fallDown(window, process);
 			}
-		}
+		//}
 		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[X]), &playerX, sizeof(unsigned int), 0);
 		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[Y]), &playerY, sizeof(unsigned int), 0);
-		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[X]), &monsterX, sizeof(unsigned int), 0);
-		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[Y]), &monsterY, sizeof(unsigned int), 0);
-		distanceY = abs(playerY - monsterY);
+		playerY = playerY + PLAYER_Y_OFFSET;
+		distanceY = abs(playerY - squareY);
 		logger.log(LOG_FILE_PATH2, "distanceY: " + std::to_string(distanceY));
 	}
 }
 
 void attackMonster(HWND window, HANDLE process) {
 	logger.log(LOG_FILE_PATH2, "attacking monster");
-	sendKey('A', 0, 1);
+	sendKey('A', 0, 0.5);
 }
 
-
-bool isMonsterDead(HANDLE process,Point<uintptr_t, 2> monsterPosition) {
-	signed int monsterX = 0;
-	signed int monsterY = 0;
-	DWORD issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPosition[X]), &monsterX, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPosition[Y]), &monsterY, sizeof(unsigned int), 0);
-	logger.log(LOG_FILE_PATH2, "--------output from isMonsterDead--------");
-	logger.log(LOG_FILE_PATH2, "monster X: " + std::to_string(monsterX));
-	logger.log(LOG_FILE_PATH2, "monster Y: " + std::to_string(monsterY));
-	if (monsterX > -120 || monsterX < -2130 || monsterY > 0 || monsterY < -400)
-		return true;
-	else
-		return false;
-}
 
 
 //Point<uintptr_t, 2> getPlayerPosition(HANDLE process, uintptr_t playerPositionBaseAddress) {
@@ -437,31 +460,6 @@ int getBiggestSquareIndex(std::vector<int> squaresMonsterCounterVector) {
 }
 
 
-int getClosestMonsterIndex(HANDLE process, Point<uintptr_t, 2> playerPosition , std::vector<Point<uintptr_t, 2>> monsterSquare) {
-	//get player x,y
-	//go through monsters and get the lowest distance monster from player.
-	int lowestDistance = 10000;
-	int lowestDistanceMonsterIndex = -1;
-	signed int playerX = 0;
-	signed int playerY = 0;
-	DWORD issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPosition[X]), &playerX, sizeof(signed int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPosition[Y]), &playerY, sizeof(signed int), 0);
-
-	for (int i = 0; i < monsterSquare.size(); i++) {
-		signed int monsterX = 0;
-		signed int monsterY = 0;
-		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterSquare[i][X]), &monsterX, sizeof(signed int), 0);
-		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterSquare[i][Y]), &monsterY, sizeof(signed int), 0);
-		signed int distance = getDistance(monsterX, monsterY, playerX, playerY);
-		if (distance < lowestDistance) {
-			lowestDistance = distance;
-			lowestDistanceMonsterIndex = i;
-		}
-	}
-	//return it's index.
-	return lowestDistanceMonsterIndex;
-}
-
 
 MapleSuperBot::MapleSuperBot() {
 	this->memoryManipulation = MemoryAccess();
@@ -490,12 +488,10 @@ int MapleSuperBot::initializePlayerPosition() {
 	return 1;
 }
 
-void MapleSuperBot::removeAllDeadMonsters() {
+void MapleSuperBot::removeMonstersFromAddressesVector(int biggestSquareIndex) {
 	std::vector<Point<uintptr_t, 2>>::iterator it = this->monstersPositionsAddressesVector.begin();
 	while (it != this->monstersPositionsAddressesVector.end()) {
-		uintptr_t xAddress = (*it)[X];
-		uintptr_t yAddress = (*it)[Y];
-		if (isMonsterDead(this->process, *it)) {
+		if (std::count(this->monstersSquares[biggestSquareIndex].begin(), this->monstersSquares[biggestSquareIndex].end(), *it)){
 			try {
 				it = this->monstersPositionsAddressesVector.erase(it);
 			}
@@ -507,65 +503,44 @@ void MapleSuperBot::removeAllDeadMonsters() {
 			++it;  // Move to the next element if not erasing
 		}
 	}
-}
-
-void MapleSuperBot::removeMonsterFromAddressesVector(DWORD xAddress) {
-	std::vector<Point<uintptr_t, 2>>::iterator it = this->monstersPositionsAddressesVector.begin();
-	std::vector<Point<uintptr_t, 2>>::iterator toRemove;
-	logger.log(LOG_FILE_PATH2,"got here 1");
-	for (it; it < this->monstersPositionsAddressesVector.end(); it++) {
-		logger.log(LOG_FILE_PATH2, std::to_string((*it)[X]));
-		if (xAddress == (*it)[X])
-		{
-			toRemove = it;
-		}
-	}
-	try{
-		this->monstersPositionsAddressesVector.erase(toRemove);
-	}
-	catch (...) {
-		logger.log(LOG_FILE_PATH2, "Exception: couldn't erase monster - does not exist in monsterPositionsAddressesVector");
-	}
+	this->monstersSquares[biggestSquareIndex].clear();
+	this->squaresMonsterCounterVector[biggestSquareIndex] = 0;
 }
 
 
 int MapleSuperBot::executeAttack() {
+	//printMonstersSquares();
+	bool isAttackExecuted = false;
 	int biggestSquareIndex = getBiggestSquareIndex(this->squaresMonsterCounterVector);
 	logger.log(LOG_FILE_PATH2, "biggest Square Index: " + std::to_string(biggestSquareIndex));
 	if (biggestSquareIndex == -1) {
 		logger.log(LOG_FILE_PATH2, "failed getting biggest square index");
 		return 0;
 	}
-	int closestMonsterIndex = getClosestMonsterIndex(this->process, this->playerPosition, this->monstersSquares[biggestSquareIndex]);
-	bool isClosestMonsterDead = false;
-	logger.log(LOG_FILE_PATH2, "closestMonsterIndex: " + std::to_string(closestMonsterIndex));
 	HWND window = FindWindowA(NULL, MAPLESTORY_HANDLE_NAME);
 	if (IsWindow(window)){
-		while (!isClosestMonsterDead) {
-			logger.log(LOG_FILE_PATH2, "monster exists");
-			if (isMonsterInRange(this->process, this->playerPosition, this->monstersSquares[biggestSquareIndex][closestMonsterIndex], ATTACK_WIDTH, ATTACK_HEIGHT))
+		signed int biggestSquareX = (this->monstersSquaresXRanges[biggestSquareIndex][X] + this->monstersSquaresXRanges[biggestSquareIndex][Y]) / 2;
+		signed int biggestSquareY = (this->monstersSquaresYRanges[biggestSquareIndex][X] + this->monstersSquaresYRanges[biggestSquareIndex][Y]) / 2;
+		if (!isSquareExists(window, process, biggestSquareX, biggestSquareY)) {
+			this->removeMonstersFromAddressesVector(biggestSquareIndex);
+			isAttackExecuted = true;
+		}
+		logger.log(LOG_FILE_PATH2, "currentSquare going to Attack: " + biggestSquareIndex);
+		printMonstersSquare(biggestSquareIndex);
+		while (!isAttackExecuted){
+			if (isSquareInRange(this->process, this->playerPosition, biggestSquareX, biggestSquareY, ATTACK_WIDTH, ATTACK_HEIGHT))
 			{
-				changeDirectionToMonster(window, this->process, this->playerPosition, this->monstersSquares[biggestSquareIndex][closestMonsterIndex]);
+				//sendKey(VK_LEFT, 0, 0.15);
+				turnLeft(window, this->process, 0.15);
 				attackMonster(window, this->process);
-				if (isMonsterDead(process, this->monstersSquares[biggestSquareIndex][closestMonsterIndex])) {
-					isClosestMonsterDead = true;
-					logger.log(LOG_FILE_PATH2, "monster is dead");
-					this->removeMonsterFromAddressesVector(this->monstersSquares[biggestSquareIndex][closestMonsterIndex][X]);
-					logger.log(LOG_FILE_PATH2, "removed monster from Addreses vector");
-				}
-				this->removeAllDeadMonsters();
+				//sendKey(VK_RIGHT, 0, 0.15);
+				turnRight(window, this->process, 0.15);
+				attackMonster(window, this->process);
+				this->removeMonstersFromAddressesVector(biggestSquareIndex);
+				isAttackExecuted = true;
 			}
 			else {
-				logger.log(LOG_FILE_PATH2, "going to monster");
-				if (isMonsterDead(process, this->monstersSquares[biggestSquareIndex][closestMonsterIndex])) {
-					isClosestMonsterDead = true;
-					logger.log(LOG_FILE_PATH2, "monster is dead");
-					this->removeMonsterFromAddressesVector(this->monstersSquares[biggestSquareIndex][closestMonsterIndex][X]);
-					logger.log(LOG_FILE_PATH2, "removed monster from Addreses vector");
-				}
-				else {
-					goToMonster(window, this->process, this->playerPosition, this->monstersSquares[biggestSquareIndex][closestMonsterIndex]);
-				}
+				goToMonster(window, this->process, this->playerPosition, biggestSquareX, biggestSquareY);
 			}
 		}
 	}
@@ -580,6 +555,10 @@ void MapleSuperBot::initializeSquares() {
 	//clear monsterSquares and squaresMonsterCounter Array
 	this->monstersSquares.clear();
 	this->squaresMonsterCounterVector.clear();
+	this->monstersSquaresXRanges.clear();
+	this->monstersSquaresYRanges.clear();
+	logger.log(LOG_FILE_PATH2, "initializing squares");
+
 	for (int i = 0; i < this->monstersPositionsAddressesVector.size(); i++) {
 		//define Square
 		uintptr_t monsterXAddress = this->monstersPositionsAddressesVector[i][X];
@@ -589,10 +568,20 @@ void MapleSuperBot::initializeSquares() {
 		signed int monsterY = -1;
 		DWORD issucceddedY = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterYAddress), &monsterY, sizeof(signed int), 0);
 		if (issucceddedX && issucceddedY) {
-			int maxX = monsterX + 300;
-			int minX = monsterX - 300;
+			int maxX = monsterX + 150;
+			int minX = monsterX - 150;
 			int maxY = monsterY + 100;
 			int minY = monsterY - 100;
+			logger.log(LOG_FILE_PATH2, "Square " + std::to_string(i) + " max X: " + std::to_string(maxX));
+			logger.log(LOG_FILE_PATH2, "Square " + std::to_string(i) + " min X: " + std::to_string(minX));
+			Point<uintptr_t, 2> currentXRange;
+			Point<uintptr_t, 2> currentYRange;
+			currentXRange[X] = minX;
+			currentXRange[Y] = maxX;
+			currentYRange[X] = minY;
+			currentYRange[Y] = maxY;
+			this->monstersSquaresXRanges.push_back(currentXRange);
+			this->monstersSquaresYRanges.push_back(currentYRange);
 
 			std::vector<Point<uintptr_t, 2>> tmpVector;
 			this->monstersSquares.push_back(tmpVector);
@@ -607,10 +596,10 @@ void MapleSuperBot::initializeSquares() {
 				signed int monsterY = -1;
 				DWORD issucceddedY = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterYAddress), &monsterY, sizeof(signed int), 0);
 				if (issucceddedX && issucceddedY) {
-					if (monsterX >= minX && monsterX <= maxX &&
+					if (monsterX >= minX && monsterX <= maxX &&   
 						monsterY >= minY && monsterY <= maxY) {
 						this->monstersSquares[i].push_back(this->monstersPositionsAddressesVector[j]);
-						this->squaresMonsterCounterVector[i] += 1;
+						this->squaresMonsterCounterVector[i] += 1 ;
 					}
 				}
 			}
@@ -671,10 +660,10 @@ void MapleSuperBot::printMonstersPositions() {
 	logger.log(LOG_FILE_PATH2, "");
 	logger.log(LOG_FILE_PATH2, "Monsters Positions:");
 	for (unsigned int i = 0; i < this->monstersPositionsAddressesVector.size(); i++) {
-		DWORD monsterXAddress = this->monstersPositionsAddressesVector[i][X];
+		uintptr_t monsterXAddress = this->monstersPositionsAddressesVector[i][X];
 		signed int monsterX = -1;
 		DWORD issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterXAddress), &monsterX, sizeof(signed int), 0);
-		DWORD monsterYAddress = this->monstersPositionsAddressesVector[i][Y];
+		uintptr_t monsterYAddress = this->monstersPositionsAddressesVector[i][Y];
 		signed int monsterY = -1;
 		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterYAddress), &monsterY, sizeof(signed int), 0);
 		logger.log(LOG_FILE_PATH2, "monster " + std::to_string(i) + ":");
@@ -689,10 +678,10 @@ void MapleSuperBot::printMonstersSquares() {
 	for (unsigned int i = 0; i < this->monstersSquares.size(); i++) {
 		logger.log(LOG_FILE_PATH2, "Square: " + std::to_string(i));
 		for (unsigned int j = 0; j < this->monstersSquares[i].size(); j++) {
-			DWORD monsterXAddress = this->monstersSquares[i][j][X];
+			uintptr_t monsterXAddress = this->monstersSquares[i][j][X];
 			signed int monsterX = -1;
 			DWORD issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterXAddress), &monsterX, sizeof(signed int), 0);
-			DWORD monsterYAddress = this->monstersSquares[i][j][Y];
+			uintptr_t monsterYAddress = this->monstersSquares[i][j][Y];
 			signed int monsterY = -1;
 			issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterYAddress), &monsterY, sizeof(signed int), 0);
 			logger.log(LOG_FILE_PATH2, "monster " + std::to_string(j) + ":");
@@ -702,6 +691,21 @@ void MapleSuperBot::printMonstersSquares() {
 	}
 }
 
+void MapleSuperBot::printMonstersSquare(int squareIndex) {
+
+	logger.log(LOG_FILE_PATH2, "-------------PrintMonstersSquare OUTPUT for Square: ------------" + std::to_string(squareIndex));
+	for (unsigned int j = 0; j < this->monstersSquares[squareIndex].size(); j++) {
+		uintptr_t monsterXAddress = this->monstersSquares[squareIndex][j][X];
+		signed int monsterX = -1;
+		DWORD issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterXAddress), &monsterX, sizeof(signed int), 0);
+		uintptr_t monsterYAddress = this->monstersSquares[squareIndex][j][Y];
+		signed int monsterY = -1;
+		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterYAddress), &monsterY, sizeof(signed int), 0);
+		logger.log(LOG_FILE_PATH2, "monster " + std::to_string(j) + ":");
+		logger.log(LOG_FILE_PATH2, "X coordinate value: " + std::to_string(monsterX));
+		logger.log(LOG_FILE_PATH2, "Y coordinate value: " + std::to_string(monsterY));
+	}
+}
 
 Point<uintptr_t, 2> MapleSuperBot::logPlayerPosition() {
 	Point<uintptr_t, 2> playerPosition;
@@ -709,6 +713,7 @@ Point<uintptr_t, 2> MapleSuperBot::logPlayerPosition() {
 	signed int playerY = 0;
 	DWORD issuccedded = ReadProcessMemory(this->process, reinterpret_cast<LPCVOID>(this->playerPosition[X]), &playerX, sizeof(unsigned int), 0);
 	issuccedded = ReadProcessMemory(this->process, reinterpret_cast<LPCVOID>(this->playerPosition[Y]), &playerY, sizeof(unsigned int), 0);
+	playerY = playerY + PLAYER_Y_OFFSET;
 	return playerPosition;
 }
 
