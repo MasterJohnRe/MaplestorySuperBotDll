@@ -25,21 +25,6 @@ const LPCSTR MAPLESTORY_MONSTER_POSITION_FUNCTION_MODULE_NAME = "GR2D_DX9.DLL";;
 const uintptr_t MAPLESTORY_MONSTER_POSITION_FUNCTION_OFFSET = 0x153A4A;
 
 
-//delete later
-const float PLAYER_SPEED = 175.8;//123.8;
-const int ATTACK_WIDTH = 310;
-const int ATTACK_HEIGHT = 30;
-const int RANGE_FOR_DASH = 355;
-const int TILE_UP_DISTANCE = 150;//TODO: edit this
-const int SIDE_DASH_TIME_FOR_FIRST_ALT = 0.25;
-const int DASH_UP_TIME_FOR_FIRST_ALT = 0.25;
-const int DASH_UP_TIME_FOR_SECOND_ALT = 0.1;
-const int FALL_DOWN_TIME_FOR_ALT = 0.1;
-const int DASH_UP_ANIMATION_TIME = 0.9;
-const int SIDE_DASH_ANIMATION_TIME = 0.93;
-const int FALL_DOWN_ANIMATION_TIME = 0.9;
-const int TIME_FOR_CLICK = 0.1;
-const LPCSTR MAPLESTORY_HANDLE_NAME = (LPCSTR)"MapleStory";
 
 //remove this and replace this with AddVectoredExceptionHandler
 LONG WINAPI UnhandledExceptionFilterNew(EXCEPTION_POINTERS* pExceptionInfo)
@@ -225,38 +210,7 @@ DWORD GetMainThreadId() {
 	return result;
 }
 
-void sendKeyWithSendMessageTest(WORD key, char letter, int time = 0) {
-	HWND window = FindWindowA(NULL, MAPLESTORY_HANDLE_NAME);
-	SetForegroundWindow(window);
-	// Define the input event for a arrow key press
-	INPUT input = { 0 };
-	input.type = INPUT_KEYBOARD;
-	input.ki.wVk = key; // virtual key code for left arrow key
-	input.ki.dwFlags = 0; // key press
 
-	// Send the key press event
-	SendInput(1, &input, sizeof(INPUT));
-
-	// Wait for 3 seconds (3000 milliseconds)
-	Sleep(time * 1000);
-
-	// Define the input event for a left arrow key release
-	input.ki.dwFlags = KEYEVENTF_KEYUP; // key release
-
-	// Send the key release event
-	SendInput(1, &input, sizeof(INPUT));
-}
-
-void dashUpTest() {
-	FileHandler logger;
-	logger.log(SUCCESS_LOG_FILE_PATH, "dashing up");
-	sendKeyWithSendMessageTest(VK_LEFT, 0,  TIME_FOR_CLICK);
-	Sleep(DASH_UP_TIME_FOR_FIRST_ALT * 1000);
-	sendKeyWithSendMessageTest(VK_RIGHT, 0, TIME_FOR_CLICK);
-	Sleep(DASH_UP_TIME_FOR_SECOND_ALT * 1000);
-	sendKeyWithSendMessageTest(VK_LEFT, 0, TIME_FOR_CLICK);
-	Sleep(DASH_UP_ANIMATION_TIME);
-}
 
 MAPLESUPERBOTDLL_API DWORD runBot()
 {
@@ -272,14 +226,8 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 	registerExceptionHandler();
 	superBot.initializePlayerPosition();
 	//superBot.logPlayerPosition();
-	Sleep(2);
-	dashUpTest();
-	Sleep(2);
-	dashUpTest();
-	Sleep(2);
-	dashUpTest();
 
-	/*while (true) {
+	while (true) {
 		if (superBot.isMonstersPositionsAddressesVectorFull())
 		{
 			//logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is full");
@@ -290,27 +238,29 @@ MAPLESUPERBOTDLL_API DWORD runBot()
 			}
 			//superBot.printMonstersPositions();
 			//execute attack
-			superBot.initializeSquares();
+			/*superBot.initializeSquares();
 			//superBot.printMonstersSquares();
 			superBot.executeAttack();
 			Sleep(200);//0.2 seconds TODO: check how much does this need to be and lower it
+			*/
 		}
 		else {
 			//logger.log(SUCCESS_LOG_FILE_PATH, "isMonstersPositionsAddressesVector is not full");
 			setDebugRegisters(mainThreadID, hookAtAddress);
-			if (!superBot.getIsHookOn())
+			Sleep(75);
+			/*if (!superBot.getIsHookOn())
 			{
 				logger.log(SUCCESS_LOG_FILE_PATH, "got here");
 				changeHardwareBpHookState(ENABLE_HWBP_HOOK, hookAtAddress);
 				superBot.setIsHookOn(true);
 				logger.log(SUCCESS_LOG_FILE_PATH, "set isHookOn to true");
 				//sleep for 0.2 second so that the hook will full it's monsters
-				Sleep(200);//TODO: lower this
-			}
+				Sleep(100);//TODO: lower this
+			}*/
 
 		}
 	}
-	*/
+	
 	return 0;
 	
 }

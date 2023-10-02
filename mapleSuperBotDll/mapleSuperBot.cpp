@@ -7,7 +7,7 @@ const int X = 0;
 const int Y = 1;
 const float PLAYER_SPEED = 175.8;//123.8;
 const int ATTACK_WIDTH = 310;
-const int ATTACK_HEIGHT = 30;
+const int ATTACK_HEIGHT = 130;
 const int RANGE_FOR_DASH = 355;
 const int TILE_UP_DISTANCE = 150;//TODO: edit this
 const int SIDE_DASH_TIME_FOR_FIRST_ALT = 0.25;
@@ -170,11 +170,11 @@ void changeDirectionToMonster(HWND window, HANDLE process, Point<uintptr_t, 2> p
 	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[Y]), &monsterY, sizeof(unsigned int), 0);
 	if ((playerX - monsterX) > 0) {
 		logger.log(LOG_FILE_PATH2,"went left");
-		sendKeyWithSendMessage(window, VK_LEFT, 0,0.05);
+		sendKey(VK_LEFT, 0,0.05);
 	}
 	else {
 		logger.log(LOG_FILE_PATH2, "went right");
-		sendKeyWithSendMessage(window, VK_RIGHT, 0,0.05);
+		sendKey(VK_RIGHT, 0, 0.05);
 	}
 }
 
@@ -194,29 +194,129 @@ bool isMonsterExists(HWND window, HANDLE process, Point<uintptr_t, 2> monsterPos
 
 
 void dash(HWND window, HANDLE process) {
-	logger.log(LOG_FILE_PATH2, "dashing left");
-	sendKeyWithSendMessage(window, VK_MENU, 0, 0);
-	Sleep(SIDE_DASH_TIME_FOR_FIRST_ALT * 1000);
-	sendKeyWithSendMessage(window, VK_MENU, 0, 0);
-	Sleep(SIDE_DASH_ANIMATION_TIME);
+	FileHandler logger;
+	logger.log(LOG_FILE_PATH2, "dashing");
+	SetForegroundWindow(window);
+	// Define the input event for a arrow key press
+	INPUT KEY_B;
+
+	KEY_B.type = INPUT_KEYBOARD;
+	KEY_B.ki.time = 0;
+	KEY_B.ki.wVk = 0;
+	KEY_B.ki.dwExtraInfo = 0;
+	KEY_B.ki.dwFlags = KEYEVENTF_SCANCODE;
+	KEY_B.ki.wScan = 0x39;  // Space key scan code
+
+	// Press and release the Space key
+
+	SendInput(1, &KEY_B, sizeof(INPUT));
+	Sleep(50);
+	KEY_B.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
+	SendInput(1, &KEY_B, sizeof(INPUT));
+
+	// Wait until next jump
+	Sleep(0.20 * 1000);
+
+	// Press and release the Space key again
+	KEY_B.ki.dwFlags = KEYEVENTF_SCANCODE;
+	SendInput(1, &KEY_B, sizeof(INPUT));
+	Sleep(50);
+	KEY_B.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
+	SendInput(1, &KEY_B, sizeof(INPUT));
+
+	Sleep(0.9 * 1000);
 }
 
 void dashUp(HWND window, HANDLE process) {
+	FileHandler logger;
 	logger.log(LOG_FILE_PATH2, "dashing up");
-	sendKeyWithSendMessage(window, VK_MENU, 0, 0);
-	Sleep(DASH_UP_TIME_FOR_FIRST_ALT * 1000);
-	sendKeyWithSendMessage(window, VK_UP, 0, 0);
-	Sleep(DASH_UP_TIME_FOR_SECOND_ALT * 1000);
-	sendKeyWithSendMessage(window, VK_MENU, 0, 0);
-	Sleep(DASH_UP_ANIMATION_TIME);
+	SetForegroundWindow(window);
+	INPUT KEY_B;
+
+	KEY_B.type = INPUT_KEYBOARD;
+	KEY_B.ki.time = 0;
+	KEY_B.ki.wVk = 0;
+	KEY_B.ki.dwExtraInfo = 0;
+	KEY_B.ki.dwFlags = KEYEVENTF_SCANCODE;
+	KEY_B.ki.wScan = 0x39;  // Space key scan code
+
+	// Press and release the Space key
+
+	SendInput(1, &KEY_B, sizeof(INPUT));
+	Sleep(50);
+	KEY_B.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
+	SendInput(1, &KEY_B, sizeof(INPUT));
+
+	// Wait until next jump
+	Sleep(0.20 * 1000);
+
+	KEYBDINPUT upArrowKb = { 0 };
+	KEYBDINPUT spaceKb = { 0 };
+	INPUT input[2] = { 0 };
+	int upArrowScan = MapVirtualKey(VK_UP, 0);
+	int spaceScan = MapVirtualKey(VK_SPACE, 0);
+
+	// Generate "key down" events for both keys
+	upArrowKb.wVk = VK_UP;
+	input[0].type = INPUT_KEYBOARD;
+	input[0].ki = upArrowKb;
+	input[0].ki.wScan = upArrowScan;
+
+	spaceKb.wVk = VK_SPACE;
+	input[1].type = INPUT_KEYBOARD;
+	input[1].ki = spaceKb;
+	input[1].ki.wScan = spaceScan;
+
+	SendInput(2, input, sizeof(INPUT));
+
+	// Simulate the keys being held down for some time (you can adjust the sleep duration)
+	Sleep(1000);  // Sleep for 1 second
+
+	// Generate "key up" events for both keys
+	upArrowKb.dwFlags = KEYEVENTF_KEYUP;
+	spaceKb.dwFlags = KEYEVENTF_KEYUP;
+
+	input[0].ki = upArrowKb;
+	input[1].ki = spaceKb;
+
+	SendInput(2, input, sizeof(INPUT));
 }
 
 void fallDown(HWND window, HANDLE process) {
-	logger.log(LOG_FILE_PATH2, "falling tile down");
-	sendKeyWithSendMessage(window, VK_DOWN, 0, 0);
-	Sleep(FALL_DOWN_TIME_FOR_ALT * 1000);
-	sendKeyWithSendMessage(window, VK_MENU, 0, 0);
-	Sleep(FALL_DOWN_ANIMATION_TIME);
+	FileHandler logger;
+	logger.log(LOG_FILE_PATH2, "falling down a tile");
+	SetForegroundWindow(window);
+
+	KEYBDINPUT downArrowKb = { 0 };
+	KEYBDINPUT spaceKb = { 0 };
+	INPUT input[2] = { 0 };
+	int upArrowScan = MapVirtualKey(VK_DOWN, 0);
+	int spaceScan = MapVirtualKey(VK_SPACE, 0);
+
+	// Generate "key down" events for both keys
+	downArrowKb.wVk = VK_DOWN;
+	input[0].type = INPUT_KEYBOARD;
+	input[0].ki = downArrowKb;
+	input[0].ki.wScan = upArrowScan;
+
+	spaceKb.wVk = VK_SPACE;
+	input[1].type = INPUT_KEYBOARD;
+	input[1].ki = spaceKb;
+	input[1].ki.wScan = spaceScan;
+
+	SendInput(2, input, sizeof(INPUT));
+
+	// Simulate the keys being held down for some time (you can adjust the sleep duration)
+	Sleep(1000);  // Sleep for 1 second
+
+	// Generate "key up" events for both keys
+	downArrowKb.dwFlags = KEYEVENTF_KEYUP;
+	spaceKb.dwFlags = KEYEVENTF_KEYUP;
+
+	input[0].ki = downArrowKb;
+	input[1].ki = spaceKb;
+
+	SendInput(2, input, sizeof(INPUT));
 }
 
 void goToMonster(HWND window, HANDLE process , Point<uintptr_t, 2> playerPositionAddresses, Point<uintptr_t, 2> monsterPositionAddresses) {
@@ -256,6 +356,8 @@ void goToMonster(HWND window, HANDLE process , Point<uintptr_t, 2> playerPositio
 		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[Y]), &playerY, sizeof(unsigned int), 0);
 		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[X]), &monsterX, sizeof(unsigned int), 0);
 		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[Y]), &monsterY, sizeof(unsigned int), 0);
+		logger.log(LOG_FILE_PATH2, "playerX: " + std::to_string(playerX) + "playerY: " + std::to_string(playerY));
+		logger.log(LOG_FILE_PATH2, "monsterX: " + std::to_string(monsterX) + "monsterY: " + std::to_string(monsterY));
 		distanceX = abs(monsterX - playerX);
 		logger.log(LOG_FILE_PATH2, "distance: " + std::to_string(distanceX));
 	}
@@ -280,7 +382,7 @@ void goToMonster(HWND window, HANDLE process , Point<uintptr_t, 2> playerPositio
 		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(playerPositionAddresses[Y]), &playerY, sizeof(unsigned int), 0);
 		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[X]), &monsterX, sizeof(unsigned int), 0);
 		issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPositionAddresses[Y]), &monsterY, sizeof(unsigned int), 0);
-		float distanceY = abs(playerY - monsterY);
+		distanceY = abs(playerY - monsterY);
 		logger.log(LOG_FILE_PATH2, "distanceY: " + std::to_string(distanceY));
 	}
 }
@@ -292,21 +394,14 @@ void attackMonster(HWND window, HANDLE process) {
 
 
 bool isMonsterDead(HANDLE process,Point<uintptr_t, 2> monsterPosition) {
-	signed int firstMonsterX = 0;
-	signed int firstMonsterY = 0;
-	DWORD issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPosition[X]), &firstMonsterX, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPosition[Y]), &firstMonsterY, sizeof(unsigned int), 0);
-	Sleep(3500); //wait second so the monster has to move.
-	signed int secondMonsterX = 0;
-	signed int secondMonsterY = 0;
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPosition[X]), &secondMonsterX, sizeof(unsigned int), 0);
-	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPosition[Y]), &secondMonsterY, sizeof(unsigned int), 0);
+	signed int monsterX = 0;
+	signed int monsterY = 0;
+	DWORD issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPosition[X]), &monsterX, sizeof(unsigned int), 0);
+	issuccedded = ReadProcessMemory(process, reinterpret_cast<LPCVOID>(monsterPosition[Y]), &monsterY, sizeof(unsigned int), 0);
 	logger.log(LOG_FILE_PATH2, "--------output from isMonsterDead--------");
-	logger.log(LOG_FILE_PATH2, "first monster X: " + std::to_string(firstMonsterX));
-	logger.log(LOG_FILE_PATH2, "second monster X: " + std::to_string(secondMonsterX));
-	logger.log(LOG_FILE_PATH2, "first monster Y: " + std::to_string(firstMonsterY));
-	logger.log(LOG_FILE_PATH2, "second monster Y: " + std::to_string(secondMonsterY));
-	if (firstMonsterX == secondMonsterX && firstMonsterY == secondMonsterY)
+	logger.log(LOG_FILE_PATH2, "monster X: " + std::to_string(monsterX));
+	logger.log(LOG_FILE_PATH2, "monster Y: " + std::to_string(monsterY));
+	if (monsterX > -120 || monsterX < -2130 || monsterY > 0 || monsterY < -400)
 		return true;
 	else
 		return false;
@@ -395,6 +490,25 @@ int MapleSuperBot::initializePlayerPosition() {
 	return 1;
 }
 
+void MapleSuperBot::removeAllDeadMonsters() {
+	std::vector<Point<uintptr_t, 2>>::iterator it = this->monstersPositionsAddressesVector.begin();
+	while (it != this->monstersPositionsAddressesVector.end()) {
+		uintptr_t xAddress = (*it)[X];
+		uintptr_t yAddress = (*it)[Y];
+		if (isMonsterDead(this->process, *it)) {
+			try {
+				it = this->monstersPositionsAddressesVector.erase(it);
+			}
+			catch (...) {
+				logger.log(LOG_FILE_PATH2, "Exception: couldn't erase monster - does not exist in monsterPositionsAddressesVector");
+			}
+		}
+		else {
+			++it;  // Move to the next element if not erasing
+		}
+	}
+}
+
 void MapleSuperBot::removeMonsterFromAddressesVector(DWORD xAddress) {
 	std::vector<Point<uintptr_t, 2>>::iterator it = this->monstersPositionsAddressesVector.begin();
 	std::vector<Point<uintptr_t, 2>>::iterator toRemove;
@@ -436,13 +550,22 @@ int MapleSuperBot::executeAttack() {
 				if (isMonsterDead(process, this->monstersSquares[biggestSquareIndex][closestMonsterIndex])) {
 					isClosestMonsterDead = true;
 					logger.log(LOG_FILE_PATH2, "monster is dead");
-					removeMonsterFromAddressesVector(this->monstersSquares[biggestSquareIndex][closestMonsterIndex][X]);
+					this->removeMonsterFromAddressesVector(this->monstersSquares[biggestSquareIndex][closestMonsterIndex][X]);
 					logger.log(LOG_FILE_PATH2, "removed monster from Addreses vector");
 				}
+				this->removeAllDeadMonsters();
 			}
 			else {
 				logger.log(LOG_FILE_PATH2, "going to monster");
-				goToMonster(window, this->process, this->playerPosition, this->monstersSquares[biggestSquareIndex][closestMonsterIndex]);
+				if (isMonsterDead(process, this->monstersSquares[biggestSquareIndex][closestMonsterIndex])) {
+					isClosestMonsterDead = true;
+					logger.log(LOG_FILE_PATH2, "monster is dead");
+					this->removeMonsterFromAddressesVector(this->monstersSquares[biggestSquareIndex][closestMonsterIndex][X]);
+					logger.log(LOG_FILE_PATH2, "removed monster from Addreses vector");
+				}
+				else {
+					goToMonster(window, this->process, this->playerPosition, this->monstersSquares[biggestSquareIndex][closestMonsterIndex]);
+				}
 			}
 		}
 	}

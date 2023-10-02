@@ -28,6 +28,7 @@ public:
 	int executeAttack();
 	int getnumberOfMonsters();
 	void removeMonsterFromAddressesVector(DWORD xAddress);
+	void removeAllDeadMonsters();
 	int initializePlayerPosition();
 	Point<uintptr_t, 2> logPlayerPosition();
 	//void setRestoreJumpHook(DWORD restoreJumpHook);
